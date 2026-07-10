@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
 import { sendMail, ticketUrl } from "@/lib/mail";
+import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
 import type { TicketStatus } from "@/generated/prisma/enums";
 
@@ -44,15 +45,17 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     select: { email: true },
   });
 
-  await Promise.all(
-    itAndAdmins.map((recipient) =>
-      sendMail(
-        recipient.email,
-        `Nuovo ticket: ${ticket.title}`,
-        `${user.name} ha aperto un nuovo ticket.\n\n${ticket.description}\n\n${ticketUrl(ticket.id)}`
-      )
-    )
-  );
+  const settings = await getSettings();
+  const vars = {
+    ticketTitle: ticket.title,
+    ticketDescription: ticket.description,
+    requesterName: user.name,
+    ticketUrl: ticketUrl(ticket.id),
+  };
+  const subject = renderTemplate(settings.newTicketEmailSubject, vars);
+  const body = renderTemplate(settings.newTicketEmailBody, vars);
+
+  await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body)));
 
   redirect(`/tickets/${ticket.id}`);
 }
@@ -100,10 +103,17 @@ export async function addComment(
   });
 
   if (!isInternal && ticket.requesterId !== user.id) {
+    const settings = await getSettings();
+    const vars = {
+      ticketTitle: ticket.title,
+      authorName: user.name,
+      commentBody: validated.data.body,
+      ticketUrl: ticketUrl(ticket.id),
+    };
     await sendMail(
       ticket.requester.email,
-      `Nuovo commento sul ticket: ${ticket.title}`,
-      `${user.name} ha commentato il tuo ticket.\n\n${validated.data.body}\n\n${ticketUrl(ticket.id)}`
+      renderTemplate(settings.newCommentEmailSubject, vars),
+      renderTemplate(settings.newCommentEmailBody, vars)
     );
   }
 
@@ -126,10 +136,16 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
     include: { requester: true },
   });
 
+  const settings = await getSettings();
+  const vars = {
+    ticketTitle: ticket.title,
+    status: statusLabels[status],
+    ticketUrl: ticketUrl(ticket.id),
+  };
   await sendMail(
     ticket.requester.email,
-    `Aggiornamento ticket: ${ticket.title}`,
-    `Lo stato del tuo ticket è cambiato in "${statusLabels[status]}".\n\n${ticketUrl(ticket.id)}`
+    renderTemplate(settings.statusChangedEmailSubject, vars),
+    renderTemplate(settings.statusChangedEmailBody, vars)
   );
 
   revalidatePath(`/tickets/${ticketId}`);
@@ -153,10 +169,12 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
   });
 
   if (assignee) {
+    const settings = await getSettings();
+    const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
     await sendMail(
       assignee.email,
-      `Ticket assegnato: ${ticket.title}`,
-      `Ti è stato assegnato il ticket "${ticket.title}".\n\n${ticketUrl(ticket.id)}`
+      renderTemplate(settings.assignedEmailSubject, vars),
+      renderTemplate(settings.assignedEmailBody, vars)
     );
   }
 

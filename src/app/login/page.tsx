@@ -10,7 +10,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-600 text-base font-bold text-white">
+          <span className="brand-mark flex h-11 w-11 items-center justify-center rounded-lg text-base font-bold text-white">
             IT
           </span>
           <h1 className="text-xl font-semibold text-gray-900">IT Tickets</h1>

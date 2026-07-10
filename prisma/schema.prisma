@@ -87,6 +87,27 @@ model Ticket {
   @@index([assigneeId])
 }
 
+model Setting {
+  // Singleton row; always read/written with id = "app".
+  id String @id @default("app")
+
+  brandColor String @default("#4f46e5")
+
+  newTicketEmailSubject String @default("Nuovo ticket: {{ticketTitle}}")
+  newTicketEmailBody    String @default("{{requesterName}} ha aperto un nuovo ticket.\n\n{{ticketDescription}}\n\n{{ticketUrl}}")
+
+  assignedEmailSubject String @default("Ticket assegnato: {{ticketTitle}}")
+  assignedEmailBody    String @default("Ti è stato assegnato il ticket \"{{ticketTitle}}\".\n\n{{ticketUrl}}")
+
+  statusChangedEmailSubject String @default("Aggiornamento ticket: {{ticketTitle}}")
+  statusChangedEmailBody    String @default("Lo stato del tuo ticket è cambiato in \"{{status}}\".\n\n{{ticketUrl}}")
+
+  newCommentEmailSubject String @default("Nuovo commento sul ticket: {{ticketTitle}}")
+  newCommentEmailBody    String @default("{{authorName}} ha commentato il tuo ticket.\n\n{{commentBody}}\n\n{{ticketUrl}}")
+
+  updatedAt DateTime @updatedAt
+}
+
 model Comment {
   id       String @id @default(cuid())
   body     String

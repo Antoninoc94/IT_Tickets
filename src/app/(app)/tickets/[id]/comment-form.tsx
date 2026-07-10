@@ -20,7 +20,7 @@ export function CommentForm({ ticketId, canWriteInternal }: { ticketId: string; 
       <div className="flex items-center justify-between">
         {canWriteInternal ? (
           <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" name="internal" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+            <input type="checkbox" name="internal" className="rounded border-gray-300 text-[var(--brand)] focus:ring-[var(--brand)]" />
             Nota interna (non visibile all&apos;utente)
           </label>
         ) : (

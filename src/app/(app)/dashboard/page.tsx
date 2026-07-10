@@ -54,7 +54,7 @@ export default async function DashboardPage() {
               {tickets.map((ticket) => (
                 <tr key={ticket.id} className="table-row">
                   <td className="px-4 py-3">
-                    <Link href={`/tickets/${ticket.id}`} className="font-medium text-indigo-600 hover:underline">
+                    <Link href={`/tickets/${ticket.id}`} className="link-brand">
                       {ticket.title}
                     </Link>
                   </td>

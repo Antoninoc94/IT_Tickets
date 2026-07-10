@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <nav className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600 text-sm font-bold text-white">
+              <span className="brand-mark flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold text-white">
                 IT
               </span>
               Tickets
@@ -30,9 +30,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Nuovo ticket
               </Link>
               {user.role === "ADMIN" && (
-                <Link href="/admin/users" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                  Utenti
-                </Link>
+                <>
+                  <Link href="/admin/users" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Utenti
+                  </Link>
+                  <Link href="/admin/settings" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Impostazioni
+                  </Link>
+                </>
               )}
             </div>
           </nav>

@@ -12,7 +12,7 @@ export function UserRowActions({ userId, active, isSelf }: { userId: string; act
     <button
       disabled={isPending}
       onClick={() => startTransition(() => toggleUserActive(userId))}
-      className="text-sm font-medium text-indigo-600 hover:underline disabled:opacity-60"
+      className="link-brand text-sm disabled:opacity-60"
     >
       {active ? "Disattiva" : "Riattiva"}
     </button>
