@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur">
+      <header className="no-print sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <nav className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center gap-2 text-base font-semibold text-gray-900">

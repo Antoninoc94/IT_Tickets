@@ -10,6 +10,7 @@ import {
   statusLabels,
 } from "@/lib/ticket-labels";
 import { DistributionBar } from "./distribution-bar";
+import { PrintButton } from "./print-button";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 function countBy<T extends string>(items: T[], keys: readonly T[]) {
@@ -22,6 +23,10 @@ function formatDuration(ms: number) {
   const hours = ms / (1000 * 60 * 60);
   if (hours < 24) return `${hours.toFixed(1)} ore`;
   return `${(hours / 24).toFixed(1)} giorni`;
+}
+
+function generatedAtLabel() {
+  return new Date().toLocaleString("it-IT", { dateStyle: "long", timeStyle: "short" });
 }
 
 function trendCounts(createdDates: Date[]) {
@@ -89,9 +94,17 @@ export default async function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="page-title">Report</h1>
-        <p className="page-subtitle">Andamento generale dei ticket.</p>
+      <div className="print-only mb-2">
+        <p className="text-lg font-semibold text-gray-900">IT Tickets — Report</p>
+        <p className="text-sm text-gray-500">Generato il {generatedAtLabel()}</p>
+      </div>
+
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Report</h1>
+          <p className="page-subtitle">Andamento generale dei ticket.</p>
+        </div>
+        <PrintButton />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

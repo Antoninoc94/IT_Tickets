@@ -66,4 +66,30 @@ body {
   .page-subtitle {
     @apply mt-1 text-sm text-gray-500;
   }
+
+  .print-only {
+    @apply hidden;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white;
+  }
+  .card,
+  .table-shell {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border-color: #d1d5db !important;
+  }
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
