@@ -71,6 +71,46 @@ export async function updateUserRole(userId: string, role: Role) {
   revalidatePath("/admin/users");
 }
 
+const UpdateProfileSchema = z.object({
+  name: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
+  email: z.email({ error: "Inserisci un'email valida." }),
+});
+
+export type UpdateProfileState = { error?: string; success?: boolean } | undefined;
+
+export async function updateUserProfile(
+  userId: string,
+  _state: UpdateProfileState,
+  formData: FormData
+): Promise<UpdateProfileState> {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+
+  const validated = UpdateProfileSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+  });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const email = validated.data.email.toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing && existing.id !== userId) {
+    return { error: "Esiste già un utente con questa email." };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { name: validated.data.name, email },
+  });
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
 export async function toggleUserActive(userId: string) {
   const current = await getCurrentUser();
   if (current.role !== "ADMIN") {

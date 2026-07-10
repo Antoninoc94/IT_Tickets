@@ -169,6 +169,44 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
   revalidatePath("/dashboard");
 }
 
+export type CloseTicketState = { error?: string } | undefined;
+
+export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
+  const user = await getCurrentUser();
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { requester: true } });
+  if (!ticket) {
+    return { error: "Ticket non trovato." };
+  }
+
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non puoi chiudere questo ticket." };
+  }
+  if (ticket.status === "CLOSED") {
+    return;
+  }
+
+  const updated = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { status: "CLOSED", closedAt: new Date() },
+    include: { requester: true },
+  });
+
+  if (isStaff) {
+    const settings = await getSettings();
+    const vars = { ticketTitle: updated.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(updated.id) };
+    await sendMail(
+      updated.requester.email,
+      renderTemplate(settings.statusChangedEmailSubject, vars),
+      renderTemplate(settings.statusChangedEmailBody, vars)
+    );
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
 export type DeleteTicketState = { error?: string } | undefined;
 
 export async function deleteTicket(ticketId: string): Promise<DeleteTicketState> {
@@ -202,23 +240,43 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
     throw new Error("Non autorizzato.");
   }
 
+  const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { status: true } });
+  if (!current) return;
+
   const assignee = assigneeId
     ? await prisma.user.findUnique({ where: { id: assigneeId } })
     : null;
 
+  // Claiming an untouched ticket implicitly starts work on it; don't override
+  // a status someone deliberately set (e.g. WAITING_ON_USER) on reassignment.
+  const autoStart = Boolean(assignee) && current.status === "OPEN";
+
   const ticket = await prisma.ticket.update({
     where: { id: ticketId },
-    data: { assigneeId: assigneeId || null },
+    data: {
+      assigneeId: assigneeId || null,
+      ...(autoStart ? { status: "IN_PROGRESS" } : {}),
+    },
     include: { requester: true },
   });
 
+  const settings = await getSettings();
+
   if (assignee) {
-    const settings = await getSettings();
     const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
     await sendMail(
       assignee.email,
       renderTemplate(settings.assignedEmailSubject, vars),
       renderTemplate(settings.assignedEmailBody, vars)
+    );
+  }
+
+  if (autoStart) {
+    const vars = { ticketTitle: ticket.title, status: statusLabels.IN_PROGRESS, ticketUrl: ticketUrl(ticket.id) };
+    await sendMail(
+      ticket.requester.email,
+      renderTemplate(settings.statusChangedEmailSubject, vars),
+      renderTemplate(settings.statusChangedEmailBody, vars)
     );
   }
 

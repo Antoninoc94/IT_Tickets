@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { UserForm } from "./user-form";
 import { UserRowActions } from "./user-row-actions";
 import { RoleSelect } from "./role-select";
+import { EditProfile } from "./edit-profile";
 import type { Role } from "@/generated/prisma/enums";
 
 const tabs: { label: string; role: Role | "ALL" }[] = [
@@ -65,8 +66,7 @@ export default async function AdminUsersPage({
         <table className="w-full text-left text-sm">
           <thead className="table-header">
             <tr>
-              <th className="px-4 py-3">Nome</th>
-              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Utente</th>
               <th className="px-4 py-3">Ruolo</th>
               <th className="px-4 py-3">Stato</th>
               <th className="px-4 py-3" />
@@ -75,8 +75,9 @@ export default async function AdminUsersPage({
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className="table-row">
-                <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                <td className="px-4 py-3">
+                  <EditProfile userId={u.id} name={u.name} email={u.email} />
+                </td>
                 <td className="px-4 py-3">
                   <RoleSelect userId={u.id} role={u.role} isSelf={u.id === current.id} />
                 </td>
@@ -98,7 +99,7 @@ export default async function AdminUsersPage({
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
                   Nessun utente in questa categoria.
                 </td>
               </tr>

@@ -12,6 +12,7 @@ import { CommentForm } from "./comment-form";
 import { TicketControls } from "./ticket-controls";
 import { AttachmentList } from "./attachment-list";
 import { DeleteTicketButton } from "./delete-ticket-button";
+import { CloseTicketButton } from "./close-ticket-button";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,6 +46,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     : [];
 
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
+  const canClose = ticket.status !== "CLOSED" && (isStaff || ticket.requesterId === user.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -87,7 +89,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         />
       )}
 
-      {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
+      {(canClose || canDelete) && (
+        <div className="flex items-center justify-end gap-3">
+          {canClose && <CloseTicketButton ticketId={ticket.id} />}
+          {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
+        </div>
+      )}
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">
