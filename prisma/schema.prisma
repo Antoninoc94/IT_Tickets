@@ -1,0 +1,104 @@
+// Prisma schema for the internal IT ticketing app
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  IT
+  USER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  HARDWARE
+  SOFTWARE
+  NETWORK
+  ACCOUNT
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(USER)
+  active       Boolean  @default(true)
+
+  // TOTP 2FA, disabled until the user completes setup
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketsCreated  Ticket[]  @relation("TicketRequester")
+  ticketsAssigned Ticket[]  @relation("TicketAssignee")
+  comments        Comment[]
+
+  @@index([role])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    TicketCategory @default(OTHER)
+
+  requester   User   @relation("TicketRequester", fields: [requesterId], references: [id])
+  requesterId String
+
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  assigneeId String?
+
+  comments Comment[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([assigneeId])
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  body     String
+  internal Boolean @default(false)
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
