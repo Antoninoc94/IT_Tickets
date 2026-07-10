@@ -90,3 +90,56 @@ export async function toggleUserActive(userId: string) {
 
   revalidatePath("/admin/users");
 }
+
+export type DeleteUserState = { error?: string } | undefined;
+
+export async function deleteUser(userId: string): Promise<DeleteUserState> {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+  if (userId === current.id) {
+    return { error: "Non puoi eliminare il tuo stesso account." };
+  }
+
+  try {
+    await prisma.user.delete({ where: { id: userId } });
+  } catch {
+    return {
+      error: "Impossibile eliminare: l'utente ha ticket o commenti associati. Disattivalo invece.",
+    };
+  }
+
+  revalidatePath("/admin/users");
+}
+
+const ResetPasswordSchema = z.object({
+  password: z.string().min(8, { error: "La password deve avere almeno 8 caratteri." }),
+});
+
+export type ResetPasswordState = { error?: string; success?: boolean } | undefined;
+
+export async function resetUserPassword(
+  userId: string,
+  _state: ResetPasswordState,
+  formData: FormData
+): Promise<ResetPasswordState> {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+
+  const validated = ResetPasswordSchema.safeParse({ password: formData.get("password") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Password non valida." };
+  }
+
+  const passwordHash = await argon2.hash(validated.data.password);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash, mustChangePassword: true },
+  });
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
