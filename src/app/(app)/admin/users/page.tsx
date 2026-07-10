@@ -1,31 +1,64 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { UserForm } from "./user-form";
 import { UserRowActions } from "./user-row-actions";
+import { RoleSelect } from "./role-select";
+import type { Role } from "@/generated/prisma/enums";
 
-const roleBadgeClass: Record<string, string> = {
-  ADMIN: "bg-purple-100 text-purple-700",
-  IT: "bg-blue-100 text-blue-700",
-  USER: "bg-gray-100 text-gray-600",
-};
+const tabs: { label: string; role: Role | "ALL" }[] = [
+  { label: "Tutti", role: "ALL" },
+  { label: "Administrator", role: "ADMIN" },
+  { label: "IT", role: "IT" },
+  { label: "Utenti", role: "USER" },
+];
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>;
+}) {
   const current = await getCurrentUser();
   if (current.role !== "ADMIN") redirect("/dashboard");
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+  const { role: roleParam } = await searchParams;
+  const activeRole = tabs.some((t) => t.role === roleParam) ? (roleParam as Role | "ALL") : "ALL";
+
+  const users = await prisma.user.findMany({
+    where: activeRole === "ALL" ? {} : { role: activeRole },
+    orderBy: { createdAt: "asc" },
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Gestione utenti</h1>
-        <p className="page-subtitle">Crea account per i colleghi e gestisci i ruoli di accesso.</p>
+        <p className="page-subtitle">Crea account per i colleghi e gestisci ruoli e accessi.</p>
       </div>
 
       <div className="card p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Nuovo utente</h2>
         <UserForm />
+      </div>
+
+      <div className="flex gap-1 border-b border-gray-200">
+        {tabs.map((tab) => {
+          const isActive = tab.role === activeRole;
+          return (
+            <Link
+              key={tab.role}
+              href={tab.role === "ALL" ? "/admin/users" : `/admin/users?role=${tab.role}`}
+              className={`border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-[var(--brand)] text-[var(--brand)]"
+                  : "border-transparent text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="table-shell">
@@ -45,7 +78,7 @@ export default async function AdminUsersPage() {
                 <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                 <td className="px-4 py-3 text-gray-600">{u.email}</td>
                 <td className="px-4 py-3">
-                  <span className={`badge ${roleBadgeClass[u.role]}`}>{u.role}</span>
+                  <RoleSelect userId={u.id} role={u.role} isSelf={u.id === current.id} />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">
@@ -63,6 +96,13 @@ export default async function AdminUsersPage() {
                 </td>
               </tr>
             ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Nessun utente in questa categoria.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

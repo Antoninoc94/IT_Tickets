@@ -5,6 +5,7 @@ import argon2 from "argon2";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
+import type { Role } from "@/generated/prisma/enums";
 
 const NewUserSchema = z.object({
   name: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
@@ -48,6 +49,23 @@ export async function createUser(_state: NewUserState, formData: FormData): Prom
       emailVerifiedAt: new Date(),
       mustChangePassword: true,
     },
+  });
+
+  revalidatePath("/admin/users");
+}
+
+export async function updateUserRole(userId: string, role: Role) {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") {
+    throw new Error("Non autorizzato.");
+  }
+  if (userId === current.id) {
+    throw new Error("Non puoi modificare il tuo stesso ruolo.");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role },
   });
 
   revalidatePath("/admin/users");
