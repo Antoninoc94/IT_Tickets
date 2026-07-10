@@ -63,9 +63,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ticketsCreated  Ticket[]  @relation("TicketRequester")
-  ticketsAssigned Ticket[]  @relation("TicketAssignee")
+  ticketsCreated  Ticket[]     @relation("TicketRequester")
+  ticketsAssigned Ticket[]     @relation("TicketAssignee")
   comments        Comment[]
+  attachments     Attachment[]
 
   @@index([role])
 }
@@ -84,7 +85,8 @@ model Ticket {
   assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
   assigneeId String?
 
-  comments Comment[]
+  comments    Comment[]
+  attachments Attachment[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -128,7 +130,32 @@ model Comment {
   author   User   @relation(fields: [authorId], references: [id])
   authorId String
 
+  attachments Attachment[]
+
   createdAt DateTime @default(now())
 
   @@index([ticketId])
+}
+
+model Attachment {
+  id         String @id @default(cuid())
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  // Name of the file on disk under the uploads directory (random, not user-controlled).
+  storageKey String @unique
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([commentId])
 }
