@@ -17,6 +17,14 @@ export function CommentForm({ ticketId, canWriteInternal }: { ticketId: string; 
         className="field-input"
       />
 
+      <input
+        name="files"
+        type="file"
+        multiple
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+        className="field-input file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
+      />
+
       <div className="flex items-center justify-between">
         {canWriteInternal ? (
           <label className="flex items-center gap-2 text-sm text-gray-600">

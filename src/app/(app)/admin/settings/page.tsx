@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "./settings-form";
+import { StorageSection } from "./storage-section";
 
 export default async function AdminSettingsPage() {
   const current = await getCurrentUser();
@@ -15,6 +16,8 @@ export default async function AdminSettingsPage() {
         <h1 className="page-title">Impostazioni</h1>
         <p className="page-subtitle">Personalizza l&apos;aspetto e i messaggi email dell&apos;applicazione.</p>
       </div>
+
+      <StorageSection />
 
       <SettingsForm settings={settings} />
     </div>

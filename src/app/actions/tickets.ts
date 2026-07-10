@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { sendMail, ticketUrl } from "@/lib/mail";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
+import { saveUploadedFiles } from "@/lib/attachments";
 import type { TicketStatus } from "@/generated/prisma/enums";
 
 const NewTicketSchema = z.object({
@@ -33,10 +34,18 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
   }
 
+  const { error: uploadError, saved } = await saveUploadedFiles(formData.getAll("files") as File[]);
+  if (uploadError) {
+    return { error: uploadError };
+  }
+
   const ticket = await prisma.ticket.create({
     data: {
       ...validated.data,
       requesterId: user.id,
+      attachments: {
+        create: saved.map((f) => ({ ...f, uploadedById: user.id })),
+      },
     },
   });
 
@@ -83,6 +92,11 @@ export async function addComment(
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
   }
 
+  const { error: uploadError, saved } = await saveUploadedFiles(formData.getAll("files") as File[]);
+  if (uploadError) {
+    return { error: uploadError };
+  }
+
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     include: { requester: true },
@@ -99,6 +113,9 @@ export async function addComment(
       authorId: user.id,
       body: validated.data.body,
       internal: isInternal,
+      attachments: {
+        create: saved.map((f) => ({ ...f, ticketId, uploadedById: user.id })),
+      },
     },
   });
 

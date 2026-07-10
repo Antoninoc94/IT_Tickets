@@ -24,6 +24,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Pre-create the uploads mount point with the right owner so the named
+# volume inherits these permissions on first run (Docker copies the
+# image directory's contents/ownership into a fresh named volume).
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

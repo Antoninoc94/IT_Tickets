@@ -64,6 +64,21 @@ export default function NewTicketPage() {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="files" className="field-label">
+            Allegati (opzionale)
+          </label>
+          <input
+            id="files"
+            name="files"
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            className="field-input file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
+          />
+          <p className="mt-1 text-xs text-gray-400">Immagini o documenti, max 25 MB per file, fino a 5 file.</p>
+        </div>
+
         {state?.error && (
           <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
         )}

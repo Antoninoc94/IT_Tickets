@@ -10,6 +10,7 @@ import {
 } from "@/lib/ticket-labels";
 import { CommentForm } from "./comment-form";
 import { TicketControls } from "./ticket-controls";
+import { AttachmentList } from "./attachment-list";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,7 +21,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     include: {
       requester: true,
       assignee: true,
-      comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
+      attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
+      comments: {
+        include: { author: true, attachments: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -48,7 +53,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
           </div>
         </div>
-        <p className="mb-5 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{ticket.description}</p>
+        <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{ticket.description}</p>
+        {ticket.attachments.length > 0 && (
+          <div className="mb-5">
+            <AttachmentList attachments={ticket.attachments} />
+          </div>
+        )}
         <dl className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4 text-sm">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</dt>
@@ -98,6 +108,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <span>{comment.createdAt.toLocaleString("it-IT")}</span>
             </div>
             <p className="whitespace-pre-wrap text-gray-800">{comment.body}</p>
+            {comment.attachments.length > 0 && (
+              <div className="mt-2">
+                <AttachmentList attachments={comment.attachments} />
+              </div>
+            )}
           </div>
         ))}
       </div>

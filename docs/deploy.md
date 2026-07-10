@@ -36,6 +36,8 @@ docker compose run --rm migrate npx prisma db seed
 
 L'app Next.js resta in ascolto sulla porta `3000` del container `app`.
 
+Gli allegati dei ticket vengono salvati sul volume Docker `uploads_data` (persistente tra i rebuild). Il limite per file (`MAX_UPLOAD_SIZE_MB`, default 25) si configura in `.env`. In Impostazioni → Spazio archiviazione trovi lo spazio totale occupato e un pulsante per eliminare gli allegati dei ticket chiusi da più di N giorni.
+
 ## Collegamento a Nginx Proxy Manager
 
 1. In NPM crea un nuovo **Proxy Host**

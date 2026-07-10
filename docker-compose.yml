@@ -43,6 +43,10 @@ services:
       SMTP_FROM: ${SMTP_FROM}
       APP_URL: ${APP_URL}
       ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-25}
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,3 +55,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
