@@ -31,6 +31,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/tickets/new" className="text-sm font-medium text-gray-600 hover:text-gray-900">
                 Nuovo ticket
               </Link>
+              {user.role !== "USER" && (
+                <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                  Report
+                </Link>
+              )}
               {user.role === "ADMIN" && (
                 <>
                   <Link href="/admin/users" className="text-sm font-medium text-gray-600 hover:text-gray-900">

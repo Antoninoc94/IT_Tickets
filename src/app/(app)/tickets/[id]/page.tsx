@@ -11,6 +11,7 @@ import {
 import { CommentForm } from "./comment-form";
 import { TicketControls } from "./ticket-controls";
 import { AttachmentList } from "./attachment-list";
+import { DeleteTicketButton } from "./delete-ticket-button";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,6 +43,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         orderBy: { name: "asc" },
       })
     : [];
+
+  const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -83,6 +86,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           itUsers={itUsers}
         />
       )}
+
+      {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">

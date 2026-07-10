@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { sendMail, ticketUrl } from "@/lib/mail";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
-import { saveUploadedFiles } from "@/lib/attachments";
+import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
 import type { TicketStatus } from "@/generated/prisma/enums";
 
 const NewTicketSchema = z.object({
@@ -167,6 +167,33 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/dashboard");
+}
+
+export type DeleteTicketState = { error?: string } | undefined;
+
+export async function deleteTicket(ticketId: string): Promise<DeleteTicketState> {
+  const user = await getCurrentUser();
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    return { error: "Ticket non trovato." };
+  }
+
+  const isStaff = user.role !== "USER";
+  const isOwnOpenTicket = ticket.requesterId === user.id && ticket.status === "OPEN";
+  if (!isStaff && !isOwnOpenTicket) {
+    return { error: "Non puoi eliminare questo ticket." };
+  }
+
+  const attachments = await prisma.attachment.findMany({
+    where: { ticketId },
+    select: { storageKey: true },
+  });
+  await Promise.all(attachments.map((a) => deleteFile(a.storageKey)));
+
+  await prisma.ticket.delete({ where: { id: ticketId } });
+
+  redirect("/dashboard");
 }
 
 export async function assignTicket(ticketId: string, assigneeId: string) {

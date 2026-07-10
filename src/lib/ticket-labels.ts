@@ -45,3 +45,26 @@ export const statusBadgeClass: Record<TicketStatus, string> = {
   RESOLVED: "bg-green-100 text-green-800",
   CLOSED: "bg-gray-100 text-gray-600",
 };
+
+export const statusBarClass: Record<TicketStatus, string> = {
+  OPEN: "bg-yellow-400",
+  IN_PROGRESS: "bg-blue-500",
+  WAITING_ON_USER: "bg-purple-500",
+  RESOLVED: "bg-green-500",
+  CLOSED: "bg-gray-400",
+};
+
+export const priorityBarClass: Record<TicketPriority, string> = {
+  LOW: "bg-gray-400",
+  MEDIUM: "bg-blue-500",
+  HIGH: "bg-orange-500",
+  URGENT: "bg-red-500",
+};
+
+export const categoryBarClass: Record<TicketCategory, string> = {
+  HARDWARE: "bg-indigo-500",
+  SOFTWARE: "bg-teal-500",
+  NETWORK: "bg-cyan-500",
+  ACCOUNT: "bg-pink-500",
+  OTHER: "bg-gray-400",
+};

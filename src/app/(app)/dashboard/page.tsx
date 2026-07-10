@@ -7,15 +7,66 @@ import {
   statusBadgeClass,
   statusLabels,
 } from "@/lib/ticket-labels";
+import { pickEnum } from "@/lib/query-params";
+import { FilterBar } from "./filter-bar";
+import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
-export default async function DashboardPage() {
+type SearchParams = {
+  q?: string;
+  status?: string;
+  priority?: string;
+  category?: string;
+  requesterId?: string;
+  assigneeId?: string;
+};
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await getCurrentUser();
+  const isStaff = user.role !== "USER";
+  const params = await searchParams;
+
+  const status = pickEnum<TicketStatus>(params.status, Object.keys(statusLabels) as TicketStatus[]);
+  const priority = pickEnum<TicketPriority>(params.priority, Object.keys(priorityLabels) as TicketPriority[]);
+  const category = pickEnum<TicketCategory>(params.category, ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]);
+  const q = params.q?.trim();
+
+  const assigneeId = isStaff && params.assigneeId ? (params.assigneeId === "me" ? user.id : params.assigneeId) : undefined;
 
   const tickets = await prisma.ticket.findMany({
-    where: user.role === "USER" ? { requesterId: user.id } : {},
+    where: {
+      ...(user.role === "USER" ? { requesterId: user.id } : {}),
+      ...(isStaff && params.requesterId ? { requesterId: params.requesterId } : {}),
+      ...(status ? { status } : {}),
+      ...(priority ? { priority } : {}),
+      ...(category ? { category } : {}),
+      ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" as const } },
+              { description: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: { requester: true, assignee: true },
   });
+
+  const [requesters, assignees] = isStaff
+    ? await Promise.all([
+        prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.user.findMany({
+          where: { role: { in: ["IT", "ADMIN"] }, active: true },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+      ])
+    : [[], []];
+
+  const hasActiveFilters = Boolean(
+    params.q || params.status || params.priority || params.category || params.requesterId || params.assigneeId
+  );
 
   return (
     <div className="space-y-6">
@@ -33,10 +84,21 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      <FilterBar
+        isStaff={isStaff}
+        requesters={requesters}
+        assignees={assignees}
+        currentUserId={user.id}
+        values={params}
+        hasActiveFilters={hasActiveFilters}
+      />
+
       {tickets.length === 0 ? (
         <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
           <p className="text-sm font-medium text-gray-900">Nessun ticket qui</p>
-          <p className="text-sm text-gray-500">Crea il primo ticket per iniziare.</p>
+          <p className="text-sm text-gray-500">
+            {hasActiveFilters ? "Nessun ticket corrisponde ai filtri." : "Crea il primo ticket per iniziare."}
+          </p>
         </div>
       ) : (
         <div className="table-shell">
