@@ -6,6 +6,11 @@ import type { Role } from "@/generated/prisma/enums";
 const SESSION_COOKIE = "session";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Only mark the cookie Secure when the app is actually served over HTTPS.
+// Behind a TLS-terminating reverse proxy (e.g. Nginx Proxy Manager), set
+// APP_URL to the https:// public URL and this will enable it automatically.
+const useSecureCookie = (process.env.APP_URL ?? "").startsWith("https://");
+
 function encodedKey() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
@@ -45,7 +50,7 @@ export async function createSession(userId: string, role: Role) {
 
   cookieStore.set(SESSION_COOKIE, session, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookie,
     sameSite: "lax",
     expires: new Date(expiresAt),
     path: "/",
