@@ -18,50 +18,55 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">
-          {user.role === "USER" ? "I miei ticket" : "Tutti i ticket"}
-        </h1>
-        <Link
-          href="/tickets/new"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Nuovo ticket
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="page-title">{user.role === "USER" ? "I miei ticket" : "Tutti i ticket"}</h1>
+          <p className="page-subtitle">
+            {tickets.length === 0
+              ? "Nessun ticket presente."
+              : `${tickets.length} ticket ${tickets.length === 1 ? "totale" : "totali"}`}
+          </p>
+        </div>
+        <Link href="/tickets/new" className="btn-primary">
+          + Nuovo ticket
         </Link>
       </div>
 
       {tickets.length === 0 ? (
-        <p className="text-sm text-gray-500">Nessun ticket presente.</p>
+        <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
+          <p className="text-sm font-medium text-gray-900">Nessun ticket qui</p>
+          <p className="text-sm text-gray-500">Crea il primo ticket per iniziare.</p>
+        </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="table-shell">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+            <thead className="table-header">
               <tr>
-                <th className="px-4 py-2">Titolo</th>
-                <th className="px-4 py-2">Richiedente</th>
-                <th className="px-4 py-2">Assegnato a</th>
-                <th className="px-4 py-2">Priorità</th>
-                <th className="px-4 py-2">Stato</th>
+                <th className="px-4 py-3">Titolo</th>
+                <th className="px-4 py-3">Richiedente</th>
+                <th className="px-4 py-3">Assegnato a</th>
+                <th className="px-4 py-3">Priorità</th>
+                <th className="px-4 py-3">Stato</th>
               </tr>
             </thead>
             <tbody>
               {tickets.map((ticket) => (
-                <tr key={ticket.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <Link href={`/tickets/${ticket.id}`} className="font-medium text-blue-700 hover:underline">
+                <tr key={ticket.id} className="table-row">
+                  <td className="px-4 py-3">
+                    <Link href={`/tickets/${ticket.id}`} className="font-medium text-indigo-600 hover:underline">
                       {ticket.title}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-gray-600">{ticket.requester.name}</td>
-                  <td className="px-4 py-2 text-gray-600">{ticket.assignee?.name ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityBadgeClass[ticket.priority]}`}>
+                  <td className="px-4 py-3 text-gray-600">{ticket.requester.name}</td>
+                  <td className="px-4 py-3 text-gray-600">{ticket.assignee?.name ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>
                       {priorityLabels[ticket.priority]}
                     </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass[ticket.status]}`}>
+                  <td className="px-4 py-3">
+                    <span className={`badge ${statusBadgeClass[ticket.status]}`}>
                       {statusLabels[ticket.status]}
                     </span>
                   </td>

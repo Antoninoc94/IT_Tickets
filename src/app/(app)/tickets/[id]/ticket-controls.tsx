@@ -21,14 +21,14 @@ export function TicketControls({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="flex flex-wrap gap-4 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="card flex flex-wrap gap-6 p-4">
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-500">Stato</label>
+        <label className="field-label">Stato</label>
         <select
           defaultValue={status}
           disabled={isPending}
           onChange={(e) => startTransition(() => updateTicketStatus(ticketId, e.target.value as TicketStatus))}
-          className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          className="field-input"
         >
           {Object.entries(statusLabels).map(([value, label]) => (
             <option key={value} value={value}>
@@ -39,12 +39,12 @@ export function TicketControls({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-500">Assegnato a</label>
+        <label className="field-label">Assegnato a</label>
         <select
           defaultValue={assigneeId ?? ""}
           disabled={isPending}
           onChange={(e) => startTransition(() => assignTicket(ticketId, e.target.value))}
-          className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          className="field-input"
         >
           <option value="">Non assegnato</option>
           {itUsers.map((u) => (

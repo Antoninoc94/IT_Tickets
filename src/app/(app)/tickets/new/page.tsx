@@ -8,24 +8,22 @@ export default function NewTicketPage() {
   const [state, action, pending] = useActionState(createTicket, undefined);
 
   return (
-    <div className="mx-auto max-w-xl">
-      <h1 className="mb-4 text-lg font-semibold text-gray-900">Nuovo ticket</h1>
+    <div className="mx-auto max-w-xl space-y-6">
+      <div>
+        <h1 className="page-title">Nuovo ticket</h1>
+        <p className="page-subtitle">Descrivi il problema, il team IT lo prenderà in carico al più presto.</p>
+      </div>
 
-      <form action={action} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
+      <form action={action} className="card space-y-5 p-6">
         <div>
-          <label htmlFor="title" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="title" className="field-label">
             Titolo
           </label>
-          <input
-            id="title"
-            name="title"
-            required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
+          <input id="title" name="title" required placeholder="Es. Stampante ufficio non funziona" className="field-input" />
         </div>
 
         <div>
-          <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="description" className="field-label">
             Descrizione
           </label>
           <textarea
@@ -33,21 +31,17 @@ export default function NewTicketPage() {
             name="description"
             required
             rows={5}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            placeholder="Descrivi cosa succede, da quando e come riprodurlo..."
+            className="field-input"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="category" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="category" className="field-label">
               Categoria
             </label>
-            <select
-              id="category"
-              name="category"
-              defaultValue="OTHER"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
+            <select id="category" name="category" defaultValue="OTHER" className="field-input">
               {Object.entries(categoryLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -57,15 +51,10 @@ export default function NewTicketPage() {
           </div>
 
           <div>
-            <label htmlFor="priority" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="priority" className="field-label">
               Priorità
             </label>
-            <select
-              id="priority"
-              name="priority"
-              defaultValue="MEDIUM"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
+            <select id="priority" name="priority" defaultValue="MEDIUM" className="field-input">
               {Object.entries(priorityLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -75,13 +64,11 @@ export default function NewTicketPage() {
           </div>
         </div>
 
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state?.error && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
+        )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Invio in corso..." : "Crea ticket"}
         </button>
       </form>

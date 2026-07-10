@@ -7,40 +7,39 @@ export function UserForm() {
   const [state, action, pending] = useActionState(createUser, undefined);
 
   return (
-    <form action={action} className="grid grid-cols-4 gap-3 rounded-lg border border-gray-200 bg-white p-4">
-      <input
-        name="name"
-        placeholder="Nome"
-        required
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-      />
-      <input
-        name="email"
-        type="email"
-        placeholder="Email"
-        required
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-      />
-      <input
-        name="password"
-        type="password"
-        placeholder="Password provvisoria"
-        required
-        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-      />
-      <select name="role" defaultValue="USER" className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-        <option value="USER">Utente</option>
-        <option value="IT">IT</option>
-        <option value="ADMIN">Administrator</option>
-      </select>
+    <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <label className="field-label" htmlFor="name">
+          Nome
+        </label>
+        <input id="name" name="name" placeholder="Mario Rossi" required className="field-input" />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="email">
+          Email
+        </label>
+        <input id="email" name="email" type="email" placeholder="mario.rossi@azienda.it" required className="field-input" />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="password">
+          Password provvisoria
+        </label>
+        <input id="password" name="password" type="password" placeholder="••••••••" required className="field-input" />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="role">
+          Ruolo
+        </label>
+        <select id="role" name="role" defaultValue="USER" className="field-input">
+          <option value="USER">Utente</option>
+          <option value="IT">IT</option>
+          <option value="ADMIN">Administrator</option>
+        </select>
+      </div>
 
-      <div className="col-span-4 flex items-center justify-between">
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-        <button
-          type="submit"
-          disabled={pending}
-          className="ml-auto rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+      <div className="col-span-full flex items-center justify-between border-t border-gray-100 pt-4">
+        {state?.error ? <p className="text-sm text-red-600">{state.error}</p> : <span />}
+        <button type="submit" disabled={pending} className="btn-primary ml-auto">
           {pending ? "Creazione..." : "Crea utente"}
         </button>
       </div>

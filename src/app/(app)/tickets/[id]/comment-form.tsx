@@ -8,30 +8,26 @@ export function CommentForm({ ticketId, canWriteInternal }: { ticketId: string; 
   const [state, formAction, pending] = useActionState<CommentState, FormData>(action, undefined);
 
   return (
-    <form action={formAction} className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
+    <form action={formAction} className="card space-y-3 p-4">
       <textarea
         name="body"
         required
         rows={3}
         placeholder="Scrivi un commento..."
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        className="field-input"
       />
 
       <div className="flex items-center justify-between">
         {canWriteInternal ? (
           <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" name="internal" className="rounded" />
+            <input type="checkbox" name="internal" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
             Nota interna (non visibile all&apos;utente)
           </label>
         ) : (
           <span />
         )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Invio..." : "Commenta"}
         </button>
       </div>

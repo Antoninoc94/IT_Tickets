@@ -39,32 +39,28 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     : [];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <div className="mb-2 flex items-start justify-between gap-4">
-          <h1 className="text-lg font-semibold text-gray-900">{ticket.title}</h1>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="card p-6">
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
           <div className="flex shrink-0 gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityBadgeClass[ticket.priority]}`}>
-              {priorityLabels[ticket.priority]}
-            </span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass[ticket.status]}`}>
-              {statusLabels[ticket.status]}
-            </span>
+            <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>{priorityLabels[ticket.priority]}</span>
+            <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
           </div>
         </div>
-        <p className="mb-4 whitespace-pre-wrap text-sm text-gray-700">{ticket.description}</p>
-        <dl className="grid grid-cols-3 gap-2 text-xs text-gray-500">
+        <p className="mb-5 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{ticket.description}</p>
+        <dl className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4 text-sm">
           <div>
-            <dt className="font-medium text-gray-400">Richiedente</dt>
-            <dd>{ticket.requester.name}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</dt>
+            <dd className="mt-0.5 text-gray-900">{ticket.requester.name}</dd>
           </div>
           <div>
-            <dt className="font-medium text-gray-400">Categoria</dt>
-            <dd>{categoryLabels[ticket.category]}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</dt>
+            <dd className="mt-0.5 text-gray-900">{categoryLabels[ticket.category]}</dd>
           </div>
           <div>
-            <dt className="font-medium text-gray-400">Assegnato a</dt>
-            <dd>{ticket.assignee?.name ?? "Non assegnato"}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</dt>
+            <dd className="mt-0.5 text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</dd>
           </div>
         </dl>
       </div>
@@ -79,19 +75,25 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       )}
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Commenti</h2>
+        <h2 className="text-sm font-semibold text-gray-900">
+          Commenti {visibleComments.length > 0 && <span className="text-gray-400">({visibleComments.length})</span>}
+        </h2>
         {visibleComments.length === 0 && <p className="text-sm text-gray-500">Nessun commento.</p>}
         {visibleComments.map((comment) => (
           <div
             key={comment.id}
-            className={`rounded-lg border p-3 text-sm ${
+            className={`rounded-xl border p-4 text-sm shadow-sm ${
               comment.internal ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
             }`}
           >
-            <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
               <span className="font-medium text-gray-700">
                 {comment.author.name}
-                {comment.internal && " · nota interna"}
+                {comment.internal && (
+                  <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                    Nota interna
+                  </span>
+                )}
               </span>
               <span>{comment.createdAt.toLocaleString("it-IT")}</span>
             </div>
