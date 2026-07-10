@@ -32,7 +32,8 @@ export async function createUser(_state: NewUserState, formData: FormData): Prom
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: validated.data.email } });
+  const email = validated.data.email.toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "Esiste già un utente con questa email." };
   }
@@ -41,9 +42,11 @@ export async function createUser(_state: NewUserState, formData: FormData): Prom
   await prisma.user.create({
     data: {
       name: validated.data.name,
-      email: validated.data.email,
+      email,
       role: validated.data.role,
       passwordHash,
+      emailVerifiedAt: new Date(),
+      mustChangePassword: true,
     },
   });
 

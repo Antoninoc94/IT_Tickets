@@ -27,7 +27,8 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
     return { error: "Credenziali non valide." };
   }
 
-  const { email, password } = validated.data;
+  const { password } = validated.data;
+  const email = validated.data.email.toLowerCase();
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.active) {
@@ -37,6 +38,10 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
   const valid = await argon2.verify(user.passwordHash, password);
   if (!valid) {
     return { error: "Email o password errati." };
+  }
+
+  if (!user.emailVerifiedAt) {
+    redirect(`/register/verify?email=${encodeURIComponent(user.email)}`);
   }
 
   await createSession(user.id, user.role);

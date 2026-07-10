@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { login } from "@/app/actions/auth";
+import { register } from "@/app/actions/register";
 
-export default function LoginPage() {
-  const [state, action, pending] = useActionState(login, undefined);
+export default function RegisterPage() {
+  const [state, action, pending] = useActionState(register, undefined);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4">
@@ -14,24 +14,24 @@ export default function LoginPage() {
           <span className="brand-mark flex h-11 w-11 items-center justify-center rounded-lg text-base font-bold text-white">
             IT
           </span>
-          <h1 className="text-xl font-semibold text-gray-900">IT Tickets</h1>
-          <p className="text-sm text-gray-500">Accedi con le tue credenziali aziendali</p>
+          <h1 className="text-xl font-semibold text-gray-900">Crea il tuo account</h1>
+          <p className="text-center text-sm text-gray-500">Usa la tua email aziendale per registrarti</p>
         </div>
 
         <div className="card p-8">
           <form action={action} className="space-y-4">
             <div>
-              <label htmlFor="email" className="field-label">
-                Email
+              <label htmlFor="name" className="field-label">
+                Nome
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                autoComplete="username"
-                className="field-input"
-              />
+              <input id="name" name="name" required className="field-input" />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="field-label">
+                Email aziendale
+              </label>
+              <input id="email" name="email" type="email" required autoComplete="username" className="field-input" />
             </div>
 
             <div>
@@ -43,7 +43,8 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                autoComplete="current-password"
+                minLength={8}
+                autoComplete="new-password"
                 className="field-input"
               />
             </div>
@@ -53,14 +54,14 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={pending} className="btn-primary w-full">
-              {pending ? "Accesso in corso..." : "Accedi"}
+              {pending ? "Registrazione in corso..." : "Registrati"}
             </button>
           </form>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            Non hai un account?{" "}
-            <Link href="/register" className="link-brand">
-              Registrati
+            Hai già un account?{" "}
+            <Link href="/login" className="link-brand">
+              Accedi
             </Link>
           </p>
         </div>

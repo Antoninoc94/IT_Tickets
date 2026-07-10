@@ -48,9 +48,15 @@ export default async function AdminUsersPage() {
                   <span className={`badge ${roleBadgeClass[u.role]}`}>{u.role}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`badge ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                    {u.active ? "Attivo" : "Disattivato"}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`badge ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                      {u.active ? "Attivo" : "Disattivato"}
+                    </span>
+                    {!u.emailVerifiedAt && <span className="badge bg-amber-100 text-amber-700">Da verificare</span>}
+                    {u.mustChangePassword && (
+                      <span className="badge bg-amber-100 text-amber-700">Password provvisoria</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <UserRowActions userId={u.id} active={u.active} isSelf={u.id === current.id} />

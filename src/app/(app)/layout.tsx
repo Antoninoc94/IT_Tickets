@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 
@@ -10,6 +11,7 @@ const roleBadgeClass: Record<string, string> = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  if (user.mustChangePassword) redirect("/change-password");
 
   return (
     <div className="min-h-screen">

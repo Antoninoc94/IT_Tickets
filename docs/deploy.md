@@ -20,6 +20,7 @@ Modifica `.env` con:
 - `AUTH_SECRET`: stringa casuale (`openssl rand -base64 32`)
 - `SMTP_HOST` / `SMTP_PORT`: indirizzo del server di posta interno
 - `APP_URL`: URL pubblico finale (es. `https://ticket.azienda.local`)
+- `ALLOWED_EMAIL_DOMAIN`: dominio email aziendale a cui limitare l'auto-registrazione (es. `azienda.it`); lascia vuoto per non limitare
 
 Avvia i servizi:
 

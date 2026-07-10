@@ -51,6 +51,15 @@ model User {
   totpSecret  String?
   totpEnabled Boolean @default(false)
 
+  // Null until the user confirms their company email address (self-registration)
+  // or an admin creates the account directly.
+  emailVerifiedAt DateTime?
+  // True for admin-created accounts until the user sets their own password.
+  mustChangePassword Boolean @default(false)
+
+  verificationCodeHash      String?
+  verificationCodeExpiresAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

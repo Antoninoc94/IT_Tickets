@@ -42,6 +42,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM}
       APP_URL: ${APP_URL}
+      ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-}
     depends_on:
       postgres:
         condition: service_healthy
