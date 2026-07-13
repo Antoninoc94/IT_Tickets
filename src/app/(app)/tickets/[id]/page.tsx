@@ -13,6 +13,7 @@ import { TicketControls } from "./ticket-controls";
 import { AttachmentList } from "./attachment-list";
 import { DeleteTicketButton } from "./delete-ticket-button";
 import { CloseTicketButton } from "./close-ticket-button";
+import { LocalTime } from "@/app/local-time";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -117,7 +118,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   </span>
                 )}
               </span>
-              <span>{comment.createdAt.toLocaleString("it-IT")}</span>
+              <LocalTime date={comment.createdAt} />
             </div>
             <p className="whitespace-pre-wrap text-gray-800">{comment.body}</p>
             {comment.attachments.length > 0 && (
