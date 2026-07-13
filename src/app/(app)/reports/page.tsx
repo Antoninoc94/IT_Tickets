@@ -54,6 +54,7 @@ export default async function ReportsPage() {
       category: true,
       createdAt: true,
       resolvedAt: true,
+      closedAt: true,
       requester: { select: { name: true } },
       assignee: { select: { name: true } },
     },
@@ -86,10 +87,17 @@ export default async function ReportsPage() {
   }
   const topAssignees = [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]);
 
-  const resolved = tickets.filter((t) => t.resolvedAt);
+  // Time to resolution, falling back to the closure time for tickets that were
+  // closed directly without first being marked "Risolto".
+  const resolutionDurations = tickets
+    .map((t) => {
+      const end = t.resolvedAt ?? t.closedAt;
+      return end ? end.getTime() - t.createdAt.getTime() : null;
+    })
+    .filter((ms): ms is number => ms !== null);
   const avgResolutionMs =
-    resolved.length > 0
-      ? resolved.reduce((sum, t) => sum + (t.resolvedAt!.getTime() - t.createdAt.getTime()), 0) / resolved.length
+    resolutionDurations.length > 0
+      ? resolutionDurations.reduce((sum, ms) => sum + ms, 0) / resolutionDurations.length
       : null;
 
   const { last30, prev30 } = trendCounts(tickets.map((t) => t.createdAt));
