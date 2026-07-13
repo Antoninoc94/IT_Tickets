@@ -2,6 +2,7 @@ import "server-only";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+export { formatBytes } from "./format-bytes";
 
 export const MAX_UPLOAD_SIZE_BYTES = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 25) * 1024 * 1024;
 export const MAX_FILES_PER_UPLOAD = 5;
@@ -83,9 +84,3 @@ export function attachmentFilePath(storageKey: string) {
   return path.join(uploadsDir(), storageKey);
 }
 
-export function formatBytes(bytes: number) {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
