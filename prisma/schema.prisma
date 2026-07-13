@@ -102,7 +102,10 @@ model Setting {
   // Singleton row; always read/written with id = "app".
   id String @id @default("app")
 
-  brandColor String @default("#4f46e5")
+  appName    String  @default("IT Tickets")
+  brandColor String  @default("#4f46e5")
+  // Filename on disk (under the uploads dir) of the company logo, if uploaded.
+  logoStorageKey String?
 
   newTicketEmailSubject String @default("Nuovo ticket: {{ticketTitle}}")
   newTicketEmailBody    String @default("{{requesterName}} ha aperto un nuovo ticket.\n\n{{ticketDescription}}\n\n{{ticketUrl}}")

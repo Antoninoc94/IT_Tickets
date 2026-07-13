@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { updateSettings } from "@/app/actions/settings";
 import type { SettingModel as Setting } from "@/generated/prisma/models/Setting";
 
@@ -43,36 +43,9 @@ const templateSections: {
 
 export function SettingsForm({ settings }: { settings: Setting }) {
   const [state, action, pending] = useActionState(updateSettings, undefined);
-  const [brandColor, setBrandColor] = useState(settings.brandColor);
 
   return (
     <form action={action} className="space-y-6">
-      <div className="card space-y-4 p-6">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Aspetto</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Il colore principale usato per bottoni, link e badge attivi.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="color"
-            value={brandColor}
-            onChange={(e) => setBrandColor(e.target.value)}
-            className="h-10 w-14 cursor-pointer rounded-md border border-gray-300"
-            aria-label="Colore principale"
-          />
-          <input
-            type="text"
-            name="brandColor"
-            value={brandColor}
-            onChange={(e) => setBrandColor(e.target.value)}
-            pattern="^#[0-9a-fA-F]{6}$"
-            className="field-input max-w-[10rem] font-mono"
-          />
-        </div>
-      </div>
-
       {templateSections.map((section) => (
         <div key={section.title} className="card space-y-4 p-6">
           <div>

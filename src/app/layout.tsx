@@ -13,10 +13,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "IT Tickets",
-  description: "Gestionale ticket IT interno",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  return {
+    title: settings.appName,
+    description: "Gestionale ticket interno",
+  };
+}
 
 // The brand color and other settings are read from the database on every
 // request, so this can't be statically prerendered.

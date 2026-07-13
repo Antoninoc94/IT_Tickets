@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
+import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 import {
   categoryBarClass,
@@ -43,6 +44,8 @@ function trendCounts(createdDates: Date[]) {
 export default async function ReportsPage() {
   const user = await getCurrentUser();
   if (user.role === "USER") redirect("/dashboard");
+
+  const settings = await getSettings();
 
   const tickets = await prisma.ticket.findMany({
     select: {
@@ -95,7 +98,7 @@ export default async function ReportsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="print-only mb-2">
-        <p className="text-lg font-semibold text-gray-900">IT Tickets — Report</p>
+        <p className="text-lg font-semibold text-gray-900">{settings.appName} — Report</p>
         <p className="text-sm text-gray-500">Generato il {generatedAtLabel()}</p>
       </div>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
+import { BrandInline } from "@/app/brand";
 
 const roleBadgeClass: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700",
@@ -19,10 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <nav className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <span className="brand-mark flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold text-white">
-                IT
-              </span>
-              Tickets
+              <BrandInline />
             </Link>
             <div className="hidden items-center gap-5 sm:flex">
               <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900">
