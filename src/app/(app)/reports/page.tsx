@@ -130,6 +130,7 @@ export default async function ReportsPage() {
         <div className="card p-4">
           <p className="text-2xl font-semibold text-gray-900">{avgResolutionMs ? formatDuration(avgResolutionMs) : "—"}</p>
           <p className="text-xs text-gray-500">Tempo medio di risoluzione</p>
+          <p className="mt-1 text-[10px] text-gray-400">Dalla creazione alla data di Risolto o Chiuso</p>
         </div>
         <div className="card p-4">
           <p className="text-2xl font-semibold text-gray-900">
