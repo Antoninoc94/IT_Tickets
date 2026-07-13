@@ -56,7 +56,8 @@ export default function NewTicketPage() {
             <label htmlFor="category" className="field-label">
               Categoria
             </label>
-            <select id="category" name="category" defaultValue="OTHER" className="field-input">
+            <select id="category" name="category" defaultValue="" required className="field-input">
+              <option value="" disabled>— Seleziona —</option>
               {Object.entries(categoryLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -69,7 +70,8 @@ export default function NewTicketPage() {
             <label htmlFor="priority" className="field-label">
               Priorità
             </label>
-            <select id="priority" name="priority" defaultValue="MEDIUM" className="field-input">
+            <select id="priority" name="priority" defaultValue="" required className="field-input">
+              <option value="" disabled>— Seleziona —</option>
               {Object.entries(priorityLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
