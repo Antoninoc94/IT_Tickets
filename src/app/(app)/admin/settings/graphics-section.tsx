@@ -57,8 +57,11 @@ function GraphicsFields({ settings }: { settings: Setting }) {
   );
 }
 
+const LOGO_MAX_MB = 2;
+
 function LogoUpload({ settings }: { settings: Setting }) {
   const [state, action, pending] = useActionState(uploadLogo, undefined);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   return (
     <div className="space-y-3 border-t border-gray-100 pt-4">
@@ -95,11 +98,16 @@ function LogoUpload({ settings }: { settings: Setting }) {
           accept="image/png,image/jpeg,image/webp"
           required
           className="field-input max-w-xs file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            setLogoError(file && file.size > LOGO_MAX_MB * 1024 * 1024 ? `Il file supera il limite di ${LOGO_MAX_MB} MB.` : null);
+          }}
         />
-        <button type="submit" disabled={pending} className="btn-secondary">
+        <button type="submit" disabled={pending || !!logoError} className="btn-secondary">
           {pending ? "Caricamento..." : settings.logoStorageKey ? "Sostituisci logo" : "Carica logo"}
         </button>
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {logoError && <p className="text-sm text-red-600">{logoError}</p>}
+        {!logoError && state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       </form>
     </div>
   );
