@@ -18,6 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: settings.appName,
     description: "Gestionale ticket interno",
+    icons: settings.faviconStorageKey
+      ? { icon: `/api/branding/favicon?v=${settings.faviconStorageKey}` }
+      : undefined,
   };
 }
 

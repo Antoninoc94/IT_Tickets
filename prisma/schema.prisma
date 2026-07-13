@@ -105,7 +105,9 @@ model Setting {
   appName    String  @default("IT Tickets")
   brandColor String  @default("#4f46e5")
   // Filename on disk (under the uploads dir) of the company logo, if uploaded.
-  logoStorageKey String?
+  logoStorageKey    String?
+  // Filename on disk of the browser favicon, if uploaded.
+  faviconStorageKey String?
 
   newTicketEmailSubject String @default("Nuovo ticket: {{ticketTitle}}")
   newTicketEmailBody    String @default("{{requesterName}} ha aperto un nuovo ticket.\n\n{{ticketDescription}}\n\n{{ticketUrl}}")

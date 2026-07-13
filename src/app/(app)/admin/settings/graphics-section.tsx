@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { removeLogo, updateGraphics, uploadLogo } from "@/app/actions/settings";
+import { removeFavicon, removeLogo, updateGraphics, uploadFavicon, uploadLogo } from "@/app/actions/settings";
 import type { SettingModel as Setting } from "@/generated/prisma/models/Setting";
 
 function GraphicsFields({ settings }: { settings: Setting }) {
@@ -113,15 +113,72 @@ function LogoUpload({ settings }: { settings: Setting }) {
   );
 }
 
+const FAVICON_MAX_KB = 512;
+
+function FaviconUpload({ settings }: { settings: Setting }) {
+  const [state, action, pending] = useActionState(uploadFavicon, undefined);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-3 border-t border-gray-100 pt-4">
+      <div>
+        <label className="field-label">Favicon (icona scheda browser)</label>
+        <p className="text-xs text-gray-400">
+          ICO, PNG o SVG, max 512 KB. Consigliato 32×32 px.
+        </p>
+      </div>
+
+      {settings.faviconStorageKey && (
+        <div className="flex items-center gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-gray-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/branding/favicon?v=${settings.faviconStorageKey}`}
+              alt="Favicon attuale"
+              className="h-6 w-6 object-contain"
+            />
+          </div>
+          <form action={removeFavicon}>
+            <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800">
+              Rimuovi favicon
+            </button>
+          </form>
+        </div>
+      )}
+
+      <form action={action} className="flex flex-wrap items-center gap-3">
+        <input
+          type="file"
+          name="favicon"
+          accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml"
+          required
+          className="field-input max-w-xs file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            setFaviconError(file && file.size > FAVICON_MAX_KB * 1024 ? `Il file supera il limite di ${FAVICON_MAX_KB} KB.` : null);
+          }}
+        />
+        <button type="submit" disabled={pending || !!faviconError} className="btn-secondary">
+          {pending ? "Caricamento..." : settings.faviconStorageKey ? "Sostituisci favicon" : "Carica favicon"}
+        </button>
+        {faviconError && <p className="text-sm text-red-600">{faviconError}</p>}
+        {!faviconError && state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {!faviconError && state?.success && <p className="text-sm text-green-600">Favicon aggiornata.</p>}
+      </form>
+    </div>
+  );
+}
+
 export function GraphicsSection({ settings }: { settings: Setting }) {
   return (
     <div className="card space-y-5 p-6">
       <div>
         <h2 className="text-sm font-semibold text-gray-900">Grafica</h2>
-        <p className="mt-0.5 text-sm text-gray-500">Nome, colore e logo dell&apos;applicazione.</p>
+        <p className="mt-0.5 text-sm text-gray-500">Nome, colore, logo e favicon dell&apos;applicazione.</p>
       </div>
       <GraphicsFields settings={settings} />
       <LogoUpload settings={settings} />
+      <FaviconUpload settings={settings} />
     </div>
   );
 }

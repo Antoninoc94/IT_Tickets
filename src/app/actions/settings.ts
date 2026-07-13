@@ -119,3 +119,53 @@ export async function removeLogo() {
   await prisma.setting.update({ where: { id: "app" }, data: { logoStorageKey: null } });
   revalidatePath("/", "layout");
 }
+
+const FAVICON_MAX_BYTES = 512 * 1024;
+const FAVICON_TYPES = new Set(["image/x-icon", "image/vnd.microsoft.icon", "image/png", "image/svg+xml"]);
+
+export type FaviconState = { error?: string; success?: boolean } | undefined;
+
+export async function uploadFavicon(_state: FaviconState, formData: FormData): Promise<FaviconState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+
+  const file = formData.get("favicon");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Seleziona un file." };
+  }
+  if (file.size > FAVICON_MAX_BYTES) {
+    return { error: "La favicon supera il limite di 512 KB." };
+  }
+  // Browsers often report ICO as "application/octet-stream"; accept by extension too.
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (!FAVICON_TYPES.has(file.type) && ext !== "ico" && ext !== "png" && ext !== "svg") {
+    return { error: "Formato non valido. Usa ICO, PNG o SVG." };
+  }
+
+  const settings = await getSettings();
+  const saved = await saveFile(file);
+  if (settings.faviconStorageKey) {
+    await deleteFile(settings.faviconStorageKey);
+  }
+
+  await prisma.setting.update({ where: { id: "app" }, data: { faviconStorageKey: saved.storageKey } });
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+export async function removeFavicon() {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") {
+    throw new Error("Non autorizzato.");
+  }
+
+  const settings = await getSettings();
+  if (settings.faviconStorageKey) {
+    await deleteFile(settings.faviconStorageKey);
+  }
+
+  await prisma.setting.update({ where: { id: "app" }, data: { faviconStorageKey: null } });
+  revalidatePath("/", "layout");
+}
