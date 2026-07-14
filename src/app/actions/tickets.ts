@@ -71,7 +71,7 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
   await createEvent(ticket.id, user.id, "CREATED");
 
   const itAndAdmins = await prisma.user.findMany({
-    where: { role: { in: ["IT", "ADMIN"] }, active: true },
+    where: { role: "IT", active: true },
     select: { email: true },
   });
 
@@ -346,7 +346,7 @@ export async function reopenTicket(
     const settings = await getSettings();
     if (settings.emailEnabled) {
       const itAndAdmins = await prisma.user.findMany({
-        where: { role: { in: ["IT", "ADMIN"] }, active: true },
+        where: { role: "IT", active: true },
         select: { email: true },
       });
       const vars = {
