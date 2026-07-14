@@ -172,10 +172,6 @@ function FaviconUpload({ settings }: { settings: Setting }) {
 export function GraphicsSection({ settings }: { settings: Setting }) {
   return (
     <div className="card space-y-5 p-6">
-      <div>
-        <h2 className="text-sm font-semibold text-gray-900">Grafica</h2>
-        <p className="mt-0.5 text-sm text-gray-500">Nome, colore, logo e favicon dell&apos;applicazione.</p>
-      </div>
       <GraphicsFields settings={settings} />
       <LogoUpload settings={settings} />
       <FaviconUpload settings={settings} />

@@ -10,11 +10,6 @@ export async function StorageSection() {
 
   return (
     <div className="card space-y-4 p-6">
-      <div>
-        <h2 className="text-sm font-semibold text-gray-900">Spazio archiviazione</h2>
-        <p className="mt-0.5 text-sm text-gray-500">Allegati caricati sui ticket.</p>
-      </div>
-
       <div className="flex gap-8">
         <div>
           <p className="text-2xl font-semibold text-gray-900">{formatBytes(stats._sum.sizeBytes ?? 0)}</p>

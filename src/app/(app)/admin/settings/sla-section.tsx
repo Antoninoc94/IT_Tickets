@@ -16,14 +16,8 @@ export function SlaSection({ settings }: { settings: Setting }) {
 
   return (
     <div className="card space-y-4 p-6">
-      <div>
-        <h2 className="text-sm font-semibold text-gray-900">SLA — Tempo massimo di risposta</h2>
-        <p className="mt-0.5 text-sm text-gray-500">
-          Ore dalla creazione del ticket entro cui deve essere risolto. Lascia vuoto per disabilitare la priorità.
-        </p>
-      </div>
-
       <form action={action} className="space-y-4">
+        <p className="text-xs text-gray-400">Lascia vuoto per disabilitare il controllo SLA per quella priorità.</p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {fields.map((f) => (
             <div key={f.name}>
