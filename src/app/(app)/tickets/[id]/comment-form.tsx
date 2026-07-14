@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useActionState } from "react";
 import { addComment, type CommentState } from "@/app/actions/tickets";
 
@@ -36,6 +36,81 @@ export function CommentForm({
   const [fileError, setFileError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Mention autocomplete state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const mentionMatches =
+    mentionQuery !== null
+      ? mentionableUsers.filter((u) =>
+          u.name.toLowerCase().includes(mentionQuery.toLowerCase())
+        )
+      : [];
+
+  function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    const pos = e.target.selectionStart ?? value.length;
+    const textBefore = value.slice(0, pos);
+    const match = textBefore.match(/@(\w[\w\s]*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionStart(pos - match[0].length);
+      setMentionIndex(0);
+    } else if (textBefore.match(/@$/)) {
+      setMentionQuery("");
+      setMentionStart(pos - 1);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+      setMentionStart(null);
+    }
+  }
+
+  function insertMention(name: string) {
+    const ta = textareaRef.current;
+    if (!ta || mentionStart === null) return;
+    const pos = ta.selectionStart ?? ta.value.length;
+    const before = ta.value.slice(0, mentionStart);
+    const after = ta.value.slice(pos);
+    ta.value = `${before}@${name} ${after}`;
+    const newPos = mentionStart + name.length + 2;
+    ta.setSelectionRange(newPos, newPos);
+    ta.focus();
+    setMentionQuery(null);
+    setMentionStart(null);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery === null || mentionMatches.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % mentionMatches.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertMention(mentionMatches[mentionIndex].name);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+      setMentionStart(null);
+    }
+  }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setMentionQuery(null);
+        setMentionStart(null);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   function insertCanned(body: string) {
     if (textareaRef.current) {
       textareaRef.current.value = body;
@@ -56,38 +131,46 @@ export function CommentForm({
             }}
             className="field-input text-sm"
           >
-            <option value="" disabled>
-              Inserisci risposta predefinita...
-            </option>
+            <option value="" disabled>Inserisci risposta predefinita...</option>
             {cannedResponses.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
+              <option key={r.id} value={r.id}>{r.title}</option>
             ))}
           </select>
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        name="body"
-        required
-        rows={3}
-        placeholder="Scrivi un commento..."
-        className="field-input"
-      />
-      {mentionableUsers.length > 0 && (
-        <p className="text-xs text-gray-400">
-          Scrivi <span className="font-medium text-gray-500">@Nome</span> per menzionare un utente e inviargli una notifica email.{" "}
-          Disponibili:{" "}
-          {mentionableUsers.map((u, i) => (
-            <span key={u.name}>
-              <span className="font-medium text-gray-500">@{u.name}</span>
-              {i < mentionableUsers.length - 1 ? ", " : ""}
-            </span>
-          ))}
-        </p>
-      )}
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          name="body"
+          required
+          rows={3}
+          placeholder="Scrivi un commento... usa @ per menzionare un utente"
+          className="field-input"
+          onChange={handleTextareaChange}
+          onKeyDown={handleKeyDown}
+        />
+
+        {mentionQuery !== null && mentionMatches.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+          >
+            {mentionMatches.map((u, i) => (
+              <button
+                key={u.name}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); insertMention(u.name); }}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
+                  i === mentionIndex ? "bg-[var(--brand)] text-white" : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span className="font-medium">@{u.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div>
         <input
