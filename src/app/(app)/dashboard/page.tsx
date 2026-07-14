@@ -60,7 +60,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [tickets, total, myAssigned, unreadRows] = await Promise.all([
     prisma.ticket.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
       skip,
       take: PAGE_SIZE,
       include: { requester: true, assignee: true, tags: true },
@@ -201,6 +201,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <th className="px-4 py-3">Assegnato a</th>
                   <th className="px-4 py-3">Priorità</th>
                   <th className="px-4 py-3">Stato</th>
+                  <th className="px-4 py-3 text-right">Ultima modifica</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,6 +245,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           return null;
                         })()}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-gray-400 tabular-nums">
+                      {ticket.updatedAt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                      <br />
+                      <span>{ticket.updatedAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
                     </td>
                   </tr>
                   );
