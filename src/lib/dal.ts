@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { decrypt, getSessionCookie } from "@/lib/session";
+import { decrypt, deleteSession, getSessionCookie } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -25,6 +25,7 @@ export const getCurrentUser = cache(async () => {
   });
 
   if (!user || !user.active) {
+    await deleteSession();
     redirect("/login");
   }
 
