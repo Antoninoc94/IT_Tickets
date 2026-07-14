@@ -54,7 +54,15 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       })
     : [];
 
-  const settings = await getSettings();
+  const [settings, cannedResponses] = await Promise.all([
+    getSettings(),
+    isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
+    prisma.ticketView.upsert({
+      where: { userId_ticketId: { userId: user.id, ticketId: id } },
+      create: { userId: user.id, ticketId: id },
+      update: { viewedAt: new Date() },
+    }),
+  ]);
   const sla = computeSla(ticket, settings);
 
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
@@ -99,6 +107,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         <TicketControls
           ticketId={ticket.id}
           status={ticket.status}
+          priority={ticket.priority}
+          category={ticket.category}
           assigneeId={ticket.assigneeId}
           itUsers={itUsers}
         />
@@ -150,7 +160,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       {ticket.status === "CLOSED" && !isStaff ? (
         <p className="text-center text-sm text-gray-400">Il ticket è chiuso. Non è possibile aggiungere nuovi commenti.</p>
       ) : (
-        <CommentForm ticketId={ticket.id} canWriteInternal={isStaff} />
+        <CommentForm ticketId={ticket.id} canWriteInternal={isStaff} cannedResponses={cannedResponses} />
       )}
     </div>
   );

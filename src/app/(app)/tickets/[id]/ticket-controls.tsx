@@ -1,20 +1,24 @@
 "use client";
 
 import { useTransition } from "react";
-import { assignTicket, updateTicketStatus } from "@/app/actions/tickets";
-import { statusLabels } from "@/lib/ticket-labels";
-import type { TicketStatus } from "@/generated/prisma/enums";
+import { assignTicket, updateTicketStatus, updateTicketMeta } from "@/app/actions/tickets";
+import { statusLabels, priorityLabels, categoryLabels } from "@/lib/ticket-labels";
+import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 type AssigneeOption = { id: string; name: string };
 
 export function TicketControls({
   ticketId,
   status,
+  priority,
+  category,
   assigneeId,
   itUsers,
 }: {
   ticketId: string;
   status: TicketStatus;
+  priority: TicketPriority;
+  category: TicketCategory;
   assigneeId: string | null;
   itUsers: AssigneeOption[];
 }) {
@@ -31,9 +35,35 @@ export function TicketControls({
           className="field-input"
         >
           {Object.entries(statusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="field-label">Priorità</label>
+        <select
+          defaultValue={priority}
+          disabled={isPending}
+          onChange={(e) => startTransition(() => updateTicketMeta(ticketId, "priority", e.target.value))}
+          className="field-input"
+        >
+          {Object.entries(priorityLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="field-label">Categoria</label>
+        <select
+          defaultValue={category}
+          disabled={isPending}
+          onChange={(e) => startTransition(() => updateTicketMeta(ticketId, "category", e.target.value))}
+          className="field-input"
+        >
+          {Object.entries(categoryLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
           ))}
         </select>
       </div>
@@ -48,9 +78,7 @@ export function TicketControls({
         >
           <option value="">Non assegnato</option>
           {itUsers.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
+            <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useActionState } from "react";
 import { addComment, type CommentState } from "@/app/actions/tickets";
 
@@ -17,14 +17,56 @@ function checkFiles(files: FileList | null): string | null {
   return null;
 }
 
-export function CommentForm({ ticketId, canWriteInternal }: { ticketId: string; canWriteInternal: boolean }) {
+type CannedResponse = { id: string; title: string; body: string };
+
+export function CommentForm({
+  ticketId,
+  canWriteInternal,
+  cannedResponses = [],
+}: {
+  ticketId: string;
+  canWriteInternal: boolean;
+  cannedResponses?: CannedResponse[];
+}) {
   const action = addComment.bind(null, ticketId);
   const [state, formAction, pending] = useActionState<CommentState, FormData>(action, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function insertCanned(body: string) {
+    if (textareaRef.current) {
+      textareaRef.current.value = body;
+      textareaRef.current.focus();
+    }
+  }
 
   return (
     <form action={formAction} className="card space-y-3 p-4">
+      {canWriteInternal && cannedResponses.length > 0 && (
+        <div>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              const found = cannedResponses.find((r) => r.id === e.target.value);
+              if (found) insertCanned(found.body);
+              e.target.value = "";
+            }}
+            className="field-input text-sm"
+          >
+            <option value="" disabled>
+              Inserisci risposta predefinita...
+            </option>
+            {cannedResponses.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <textarea
+        ref={textareaRef}
         name="body"
         required
         rows={3}

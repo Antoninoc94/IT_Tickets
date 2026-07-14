@@ -9,7 +9,7 @@ import { sendMail, ticketUrl } from "@/lib/mail";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
 import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
-import type { TicketStatus } from "@/generated/prisma/enums";
+import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,7 +124,7 @@ export async function addComment(
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { requester: true },
+    include: { requester: true, assignee: { select: { id: true, email: true } } },
   });
   if (!ticket) {
     return { error: "Ticket non trovato." };
@@ -148,7 +148,7 @@ export async function addComment(
     },
   });
 
-  if (!isInternal && ticket.requesterId !== user.id) {
+  if (!isInternal) {
     const settings = await getSettings();
     const vars = {
       ticketTitle: ticket.title,
@@ -156,11 +156,22 @@ export async function addComment(
       commentBody: validated.data.body,
       ticketUrl: ticketUrl(ticket.id),
     };
-    await sendMail(
-      ticket.requester.email,
-      renderTemplate(settings.newCommentEmailSubject, vars),
-      renderTemplate(settings.newCommentEmailBody, vars)
-    );
+    // Notify requester when IT/Admin comments
+    if (ticket.requesterId !== user.id) {
+      await sendMail(
+        ticket.requester.email,
+        renderTemplate(settings.newCommentEmailSubject, vars),
+        renderTemplate(settings.newCommentEmailBody, vars)
+      );
+    }
+    // Notify assignee when the requester (USER) comments
+    if (user.role === "USER" && ticket.assignee && ticket.assignee.id !== user.id) {
+      await sendMail(
+        ticket.assignee.email,
+        renderTemplate(settings.newCommentEmailSubject, vars),
+        renderTemplate(settings.newCommentEmailBody, vars)
+      );
+    }
   }
 
   revalidatePath(`/tickets/${ticketId}`);
@@ -361,6 +372,36 @@ export async function deleteTicket(ticketId: string): Promise<DeleteTicketState>
   await prisma.ticket.delete({ where: { id: ticketId } });
 
   redirect("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Update ticket priority / category (staff only)
+// ---------------------------------------------------------------------------
+
+export async function updateTicketMeta(
+  ticketId: string,
+  field: "priority" | "category",
+  value: string
+) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+
+  if (field === "priority") {
+    const valid: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    if (!valid.includes(value as TicketPriority)) throw new Error("Valore non valido.");
+    const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { priority: true } });
+    await prisma.ticket.update({ where: { id: ticketId }, data: { priority: value as TicketPriority } });
+    if (current) await createEvent(ticketId, user.id, "PRIORITY_CHANGED", { from: current.priority, to: value });
+  } else {
+    const valid: TicketCategory[] = ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"];
+    if (!valid.includes(value as TicketCategory)) throw new Error("Valore non valido.");
+    const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { category: true } });
+    await prisma.ticket.update({ where: { id: ticketId }, data: { category: value as TicketCategory } });
+    if (current) await createEvent(ticketId, user.id, "CATEGORY_CHANGED", { from: current.category, to: value });
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
 }
 
 // ---------------------------------------------------------------------------

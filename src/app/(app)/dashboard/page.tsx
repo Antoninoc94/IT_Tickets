@@ -13,6 +13,8 @@ import { getSettings } from "@/lib/settings";
 import { computeSla, formatRemaining } from "@/lib/sla";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
+const PAGE_SIZE = 25;
+
 type SearchParams = {
   q?: string;
   status?: string;
@@ -20,6 +22,7 @@ type SearchParams = {
   category?: string;
   requesterId?: string;
   assigneeId?: string;
+  page?: string;
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -31,29 +34,38 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const priority = pickEnum<TicketPriority>(params.priority, Object.keys(priorityLabels) as TicketPriority[]);
   const category = pickEnum<TicketCategory>(params.category, ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]);
   const q = params.q?.trim();
-
   const assigneeId = isStaff && params.assigneeId ? (params.assigneeId === "me" ? user.id : params.assigneeId) : undefined;
 
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      ...(user.role === "USER" ? { requesterId: user.id } : {}),
-      ...(isStaff && params.requesterId ? { requesterId: params.requesterId } : {}),
-      ...(status ? { status } : {}),
-      ...(priority ? { priority } : {}),
-      ...(category ? { category } : {}),
-      ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" as const } },
-              { description: { contains: q, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    include: { requester: true, assignee: true },
-  });
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1);
+  const skip = (page - 1) * PAGE_SIZE;
+
+  const where = {
+    ...(user.role === "USER" ? { requesterId: user.id } : {}),
+    ...(isStaff && params.requesterId ? { requesterId: params.requesterId } : {}),
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+    ...(category ? { category } : {}),
+    ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
+    ...(q
+      ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  const [tickets, total] = await Promise.all([
+    prisma.ticket.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: PAGE_SIZE,
+      include: { requester: true, assignee: true },
+    }),
+    prisma.ticket.count({ where }),
+  ]);
 
   const [requesters, assignees] = isStaff
     ? await Promise.all([
@@ -67,10 +79,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     : [[], []];
 
   const settings = await getSettings();
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const hasActiveFilters = Boolean(
     params.q || params.status || params.priority || params.category || params.requesterId || params.assigneeId
   );
+
+  const exportParams = new URLSearchParams();
+  if (params.q) exportParams.set("q", params.q);
+  if (params.status) exportParams.set("status", params.status);
+  if (params.priority) exportParams.set("priority", params.priority);
+  if (params.category) exportParams.set("category", params.category);
+  if (params.requesterId) exportParams.set("requesterId", params.requesterId);
+  if (params.assigneeId) exportParams.set("assigneeId", params.assigneeId);
+  const exportHref = `/api/tickets/export?${exportParams.toString()}`;
+
+  function pageHref(p: number) {
+    const sp = new URLSearchParams(exportParams);
+    if (p > 1) sp.set("page", String(p));
+    return `/dashboard?${sp.toString()}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -78,14 +106,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div>
           <h1 className="page-title">{user.role === "USER" ? "I miei ticket" : "Tutti i ticket"}</h1>
           <p className="page-subtitle">
-            {tickets.length === 0
+            {total === 0
               ? "Nessun ticket presente."
-              : `${tickets.length} ticket ${tickets.length === 1 ? "totale" : "totali"}`}
+              : `${total} ticket ${total === 1 ? "totale" : "totali"}`}
           </p>
         </div>
-        <Link href="/tickets/new" className="btn-primary">
-          + Nuovo ticket
-        </Link>
+        <div className="flex items-center gap-3">
+          <a href={exportHref} className="btn-ghost text-sm" download>
+            ↓ Esporta CSV
+          </a>
+          <Link href="/tickets/new" className="btn-primary">
+            + Nuovo ticket
+          </Link>
+        </div>
       </div>
 
       <FilterBar
@@ -97,7 +130,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         hasActiveFilters={hasActiveFilters}
       />
 
-      {tickets.length === 0 ? (
+      {total === 0 ? (
         <div className="card flex flex-col items-center gap-2 px-6 py-16 text-center">
           <p className="text-sm font-medium text-gray-900">Nessun ticket qui</p>
           <p className="text-sm text-gray-500">
@@ -105,50 +138,68 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </p>
         </div>
       ) : (
-        <div className="table-shell">
-          <table className="w-full text-left text-sm">
-            <thead className="table-header">
-              <tr>
-                <th className="px-4 py-3">Titolo</th>
-                <th className="px-4 py-3">Richiedente</th>
-                <th className="px-4 py-3">Assegnato a</th>
-                <th className="px-4 py-3">Priorità</th>
-                <th className="px-4 py-3">Stato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="table-row">
-                  <td className="px-4 py-3">
-                    <Link href={`/tickets/${ticket.id}`} className="link-brand">
-                      {ticket.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{ticket.requester.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{ticket.assignee?.name ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>
-                      {priorityLabels[ticket.priority]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className={`badge ${statusBadgeClass[ticket.status]}`}>
-                        {statusLabels[ticket.status]}
-                      </span>
-                      {(() => {
-                        const sla = computeSla(ticket, settings);
-                        if (sla.status === "overdue") return <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>;
-                        if (sla.status === "warning") return <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>;
-                        return null;
-                      })()}
-                    </div>
-                  </td>
+        <>
+          <div className="table-shell">
+            <table className="w-full text-left text-sm">
+              <thead className="table-header">
+                <tr>
+                  <th className="px-4 py-3">Titolo</th>
+                  <th className="px-4 py-3">Richiedente</th>
+                  <th className="px-4 py-3">Assegnato a</th>
+                  <th className="px-4 py-3">Priorità</th>
+                  <th className="px-4 py-3">Stato</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {tickets.map((ticket) => (
+                  <tr key={ticket.id} className="table-row">
+                    <td className="px-4 py-3">
+                      <Link href={`/tickets/${ticket.id}`} className="link-brand">
+                        {ticket.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{ticket.requester.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{ticket.assignee?.name ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>
+                        {priorityLabels[ticket.priority]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`badge ${statusBadgeClass[ticket.status]}`}>
+                          {statusLabels[ticket.status]}
+                        </span>
+                        {(() => {
+                          const sla = computeSla(ticket, settings);
+                          if (sla.status === "overdue") return <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>;
+                          if (sla.status === "warning") return <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>;
+                          return null;
+                        })()}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 text-sm">
+              {page > 1 ? (
+                <Link href={pageHref(page - 1)} className="btn-ghost">← Precedente</Link>
+              ) : (
+                <span className="btn-ghost cursor-default opacity-40">← Precedente</span>
+              )}
+              <span className="text-gray-500">Pagina {page} di {totalPages}</span>
+              {page < totalPages ? (
+                <Link href={pageHref(page + 1)} className="btn-ghost">Successiva →</Link>
+              ) : (
+                <span className="btn-ghost cursor-default opacity-40">Successiva →</span>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -46,6 +46,27 @@ enum TicketEventType {
   UNASSIGNED
   CLOSED
   REOPENED
+  PRIORITY_CHANGED
+  CATEGORY_CHANGED
+}
+
+model CannedResponse {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TicketView {
+  userId    String
+  ticketId  String
+  viewedAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([userId, ticketId])
 }
 
 model User {
@@ -77,6 +98,7 @@ model User {
   comments        Comment[]
   attachments     Attachment[]
   ticketEvents    TicketEvent[] @relation("TicketEventActor")
+  ticketViews     TicketView[]
 
   @@index([role])
 }
@@ -98,6 +120,7 @@ model Ticket {
   comments    Comment[]
   attachments Attachment[]
   events      TicketEvent[]
+  views       TicketView[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt

@@ -20,6 +20,21 @@ const statusLabel: Record<string, string> = {
   CLOSED: "Chiuso",
 };
 
+const priorityLabel: Record<string, string> = {
+  LOW: "Bassa",
+  MEDIUM: "Media",
+  HIGH: "Alta",
+  URGENT: "Urgente",
+};
+
+const categoryLabel: Record<string, string> = {
+  HARDWARE: "Hardware",
+  SOFTWARE: "Software",
+  NETWORK: "Rete",
+  ACCOUNT: "Account",
+  OTHER: "Altro",
+};
+
 function eventDescription(e: EventItem): string {
   const meta = e.meta ?? {};
   switch (e.type) {
@@ -35,6 +50,10 @@ function eventDescription(e: EventItem): string {
       return "Ticket chiuso";
     case "REOPENED":
       return "Ticket riaperto";
+    case "PRIORITY_CHANGED":
+      return `Priorità cambiata da "${priorityLabel[meta.from] ?? meta.from}" a "${priorityLabel[meta.to] ?? meta.to}"`;
+    case "CATEGORY_CHANGED":
+      return `Categoria cambiata da "${categoryLabel[meta.from] ?? meta.from}" a "${categoryLabel[meta.to] ?? meta.to}"`;
   }
 }
 
@@ -53,6 +72,9 @@ function eventIcon(type: TicketEventType) {
       return <span className={`${base} bg-red-100`}><svg className="h-3 w-3 text-red-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg></span>;
     case "REOPENED":
       return <span className={`${base} bg-green-100`}><svg className="h-3 w-3 text-green-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd"/></svg></span>;
+    case "PRIORITY_CHANGED":
+    case "CATEGORY_CHANGED":
+      return <span className={`${base} bg-yellow-100`}><svg className="h-3 w-3 text-yellow-600" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg></span>;
   }
 }
 
