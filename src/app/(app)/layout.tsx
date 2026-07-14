@@ -47,6 +47,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <Link href="/admin/canned-responses" className="text-sm font-medium text-gray-600 hover:text-gray-900">
                     Risposte
                   </Link>
+                  <Link href="/admin/tags" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Etichette
+                  </Link>
                 </>
               )}
             </div>

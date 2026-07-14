@@ -82,10 +82,11 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     requesterName: user.name,
     ticketUrl: ticketUrl(ticket.id),
   };
-  const subject = renderTemplate(settings.newTicketEmailSubject, vars);
-  const body = renderTemplate(settings.newTicketEmailBody, vars);
-
-  await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body)));
+  if (settings.emailEnabled) {
+    const subject = renderTemplate(settings.newTicketEmailSubject, vars);
+    const body = renderTemplate(settings.newTicketEmailBody, vars);
+    await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body)));
+  }
 
   redirect(`/tickets/${ticket.id}`);
 }
@@ -156,21 +157,41 @@ export async function addComment(
       commentBody: validated.data.body,
       ticketUrl: ticketUrl(ticket.id),
     };
-    // Notify requester when IT/Admin comments
-    if (ticket.requesterId !== user.id) {
-      await sendMail(
-        ticket.requester.email,
-        renderTemplate(settings.newCommentEmailSubject, vars),
-        renderTemplate(settings.newCommentEmailBody, vars)
-      );
-    }
-    // Notify assignee when the requester (USER) comments
-    if (user.role === "USER" && ticket.assignee && ticket.assignee.id !== user.id) {
-      await sendMail(
-        ticket.assignee.email,
-        renderTemplate(settings.newCommentEmailSubject, vars),
-        renderTemplate(settings.newCommentEmailBody, vars)
-      );
+
+    if (settings.emailEnabled) {
+      // Notify requester when IT/Admin comments
+      if (ticket.requesterId !== user.id) {
+        await sendMail(
+          ticket.requester.email,
+          renderTemplate(settings.newCommentEmailSubject, vars),
+          renderTemplate(settings.newCommentEmailBody, vars)
+        );
+      }
+      // Notify assignee when the requester (USER) comments
+      if (user.role === "USER" && ticket.assignee && ticket.assignee.id !== user.id) {
+        await sendMail(
+          ticket.assignee.email,
+          renderTemplate(settings.newCommentEmailSubject, vars),
+          renderTemplate(settings.newCommentEmailBody, vars)
+        );
+      }
+      // @mention notifications
+      const mentionedNames = [...new Set((validated.data.body.match(/@([\w\s]+?)(?=\s|$|[,.])/g) ?? []).map((m) => m.slice(1).trim()))];
+      if (mentionedNames.length > 0) {
+        const mentionedUsers = await prisma.user.findMany({
+          where: { name: { in: mentionedNames }, active: true, id: { not: user.id } },
+          select: { email: true },
+        });
+        await Promise.all(
+          mentionedUsers.map((u) =>
+            sendMail(
+              u.email,
+              renderTemplate(settings.mentionEmailSubject, vars),
+              renderTemplate(settings.mentionEmailBody, vars)
+            )
+          )
+        );
+      }
     }
   }
 
@@ -203,16 +224,18 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
   await createEvent(ticketId, user.id, "STATUS_CHANGED", { from: current.status, to: status });
 
   const settings = await getSettings();
-  const vars = {
-    ticketTitle: ticket.title,
-    status: statusLabels[status],
-    ticketUrl: ticketUrl(ticket.id),
-  };
-  await sendMail(
-    ticket.requester.email,
-    renderTemplate(settings.statusChangedEmailSubject, vars),
-    renderTemplate(settings.statusChangedEmailBody, vars)
-  );
+  if (settings.emailEnabled) {
+    const vars = {
+      ticketTitle: ticket.title,
+      status: statusLabels[status],
+      ticketUrl: ticketUrl(ticket.id),
+    };
+    await sendMail(
+      ticket.requester.email,
+      renderTemplate(settings.statusChangedEmailSubject, vars),
+      renderTemplate(settings.statusChangedEmailBody, vars)
+    );
+  }
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/dashboard");
@@ -252,12 +275,14 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
 
   if (isStaff) {
     const settings = await getSettings();
-    const vars = { ticketTitle: updated.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(updated.id) };
-    await sendMail(
-      updated.requester.email,
-      renderTemplate(settings.statusChangedEmailSubject, vars),
-      renderTemplate(settings.statusChangedEmailBody, vars)
-    );
+    if (settings.emailEnabled) {
+      const vars = { ticketTitle: updated.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(updated.id) };
+      await sendMail(
+        updated.requester.email,
+        renderTemplate(settings.statusChangedEmailSubject, vars),
+        renderTemplate(settings.statusChangedEmailBody, vars)
+      );
+    }
   }
 
   revalidatePath(`/tickets/${ticketId}`);
@@ -319,24 +344,26 @@ export async function reopenTicket(
   // Notify IT/Admin when a user reopens their ticket
   if (!isStaff) {
     const settings = await getSettings();
-    const itAndAdmins = await prisma.user.findMany({
-      where: { role: { in: ["IT", "ADMIN"] }, active: true },
-      select: { email: true },
-    });
-    const vars = {
-      ticketTitle: ticket.title,
-      status: statusLabels.OPEN,
-      ticketUrl: ticketUrl(ticket.id),
-    };
-    await Promise.all(
-      itAndAdmins.map((r) =>
-        sendMail(
-          r.email,
-          renderTemplate(settings.statusChangedEmailSubject, vars),
-          renderTemplate(settings.statusChangedEmailBody, vars)
+    if (settings.emailEnabled) {
+      const itAndAdmins = await prisma.user.findMany({
+        where: { role: { in: ["IT", "ADMIN"] }, active: true },
+        select: { email: true },
+      });
+      const vars = {
+        ticketTitle: ticket.title,
+        status: statusLabels.OPEN,
+        ticketUrl: ticketUrl(ticket.id),
+      };
+      await Promise.all(
+        itAndAdmins.map((r) =>
+          sendMail(
+            r.email,
+            renderTemplate(settings.statusChangedEmailSubject, vars),
+            renderTemplate(settings.statusChangedEmailBody, vars)
+          )
         )
-      )
-    );
+      );
+    }
   }
 
   revalidatePath(`/tickets/${ticketId}`);
@@ -460,22 +487,23 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
 
   const settings = await getSettings();
 
-  if (assignee) {
-    const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
-    await sendMail(
-      assignee.email,
-      renderTemplate(settings.assignedEmailSubject, vars),
-      renderTemplate(settings.assignedEmailBody, vars)
-    );
-  }
-
-  if (autoStart) {
-    const vars = { ticketTitle: ticket.title, status: statusLabels.IN_PROGRESS, ticketUrl: ticketUrl(ticket.id) };
-    await sendMail(
-      ticket.requester.email,
-      renderTemplate(settings.statusChangedEmailSubject, vars),
-      renderTemplate(settings.statusChangedEmailBody, vars)
-    );
+  if (settings.emailEnabled) {
+    if (assignee) {
+      const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
+      await sendMail(
+        assignee.email,
+        renderTemplate(settings.assignedEmailSubject, vars),
+        renderTemplate(settings.assignedEmailBody, vars)
+      );
+    }
+    if (autoStart) {
+      const vars = { ticketTitle: ticket.title, status: statusLabels.IN_PROGRESS, ticketUrl: ticketUrl(ticket.id) };
+      await sendMail(
+        ticket.requester.email,
+        renderTemplate(settings.statusChangedEmailSubject, vars),
+        renderTemplate(settings.statusChangedEmailBody, vars)
+      );
+    }
   }
 
   revalidatePath(`/tickets/${ticketId}`);

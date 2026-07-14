@@ -19,6 +19,7 @@ import { ReopenTicketButton } from "./reopen-ticket-button";
 import { TicketHistory } from "./ticket-history";
 import { LocalTime } from "@/app/local-time";
 import { ViewTracker } from "./view-tracker";
+import { TagEditor } from "./tag-editor";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +30,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     include: {
       requester: true,
       assignee: true,
+      tags: true,
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
         include: { author: true, attachments: true },
@@ -55,9 +57,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       })
     : [];
 
-  const [settings, cannedResponses] = await Promise.all([
+  const [settings, cannedResponses, allTags] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
+    isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
   ]);
   const sla = computeSla(ticket, settings);
 
@@ -99,6 +102,21 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
         </dl>
       </div>
+
+      {ticket.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {ticket.tags.map((tag) => (
+            <span key={tag.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: tag.color + "22", color: tag.color }}>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {isStaff && allTags.length > 0 && (
+        <TagEditor ticketId={ticket.id} allTags={allTags} currentTagIds={ticket.tags.map((t) => t.id)} />
+      )}
 
       {isStaff && (
         <TicketControls

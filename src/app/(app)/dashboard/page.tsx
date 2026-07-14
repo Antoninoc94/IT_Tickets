@@ -56,15 +56,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       : {}),
   };
 
-  const [tickets, total] = await Promise.all([
+  const [tickets, total, myAssigned] = await Promise.all([
     prisma.ticket.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip,
       take: PAGE_SIZE,
-      include: { requester: true, assignee: true },
+      include: { requester: true, assignee: true, tags: true },
     }),
     prisma.ticket.count({ where }),
+    isStaff
+      ? prisma.ticket.findMany({
+          where: { assigneeId: user.id, status: { notIn: ["CLOSED", "RESOLVED"] } },
+          orderBy: { createdAt: "desc" },
+          include: { requester: true, tags: true },
+          take: 10,
+        })
+      : Promise.resolve([]),
   ]);
 
   const [requesters, assignees] = isStaff
@@ -121,6 +129,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
+      {isStaff && myAssigned.length > 0 && (
+        <div className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">
+            I miei ticket assegnati <span className="ml-1 text-gray-400">({myAssigned.length})</span>
+          </h2>
+          <ul className="divide-y divide-gray-100">
+            {myAssigned.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-4 py-2">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <a href={`/tickets/${t.id}`} className="link-brand truncate text-sm">{t.title}</a>
+                  <span className="text-xs text-gray-400">{t.requester.name}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {t.tags.map((tag) => (
+                    <span key={tag.id} className="hidden rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline-block" style={{ backgroundColor: tag.color + "22", color: tag.color }}>{tag.name}</span>
+                  ))}
+                  <span className={`badge ${statusBadgeClass[t.status]}`}>{statusLabels[t.status]}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <FilterBar
         isStaff={isStaff}
         requesters={requesters}
@@ -157,6 +189,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       <Link href={`/tickets/${ticket.id}`} className="link-brand">
                         {ticket.title}
                       </Link>
+                      {ticket.tags.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {ticket.tags.map((tag) => (
+                            <span key={tag.id} className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: tag.color + "22", color: tag.color }}>{tag.name}</span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{ticket.requester.name}</td>
                     <td className="px-4 py-3 text-gray-600">{ticket.assignee?.name ?? "—"}</td>

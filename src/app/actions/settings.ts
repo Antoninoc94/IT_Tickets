@@ -190,6 +190,34 @@ export async function updateSla(_state: SlaState, formData: FormData): Promise<S
   return { success: true };
 }
 
+// ---------------------------------------------------------------------------
+// Email toggle + reminder + digest
+// ---------------------------------------------------------------------------
+
+export type EmailFlagsState = { error?: string; success?: boolean } | undefined;
+
+export async function updateEmailFlags(_state: EmailFlagsState, formData: FormData): Promise<EmailFlagsState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") return { error: "Non autorizzato." };
+
+  const emailEnabled = formData.get("emailEnabled") === "on";
+  const digestEnabled = formData.get("digestEnabled") === "on";
+  const rawDays = formData.get("reminderDays");
+  const reminderDays = rawDays === "" || rawDays === null ? null : parseInt(rawDays as string);
+  if (reminderDays !== null && (isNaN(reminderDays) || reminderDays < 1 || reminderDays > 365)) {
+    return { error: "Giorni promemoria: inserisci un valore tra 1 e 365, oppure lascia vuoto per disabilitare." };
+  }
+
+  await prisma.setting.upsert({
+    where: { id: "app" },
+    update: { emailEnabled, digestEnabled, reminderDays },
+    create: { id: "app", emailEnabled, digestEnabled, reminderDays },
+  });
+
+  revalidatePath("/admin/settings");
+  return { success: true };
+}
+
 export async function removeFavicon() {
   const user = await getCurrentUser();
   if (user.role !== "ADMIN") {

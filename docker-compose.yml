@@ -45,6 +45,7 @@ services:
       ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-25}
       UPLOADS_DIR: /app/uploads
+      CRON_SECRET: ${CRON_SECRET:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
@@ -52,6 +53,17 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  cron:
+    image: alpine:3
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+    # Runs daily at 07:00: reminder check + digest
+    command: >
+      sh -c 'echo "0 7 * * * wget -q -O- --header=\"x-cron-secret: $$CRON_SECRET\" http://app:3000/api/cron/reminders && wget -q -O- --header=\"x-cron-secret: $$CRON_SECRET\" http://app:3000/api/cron/digest" | crontab - && crond -f -l 8'
+    depends_on:
+      - app
 
 volumes:
   postgres_data:

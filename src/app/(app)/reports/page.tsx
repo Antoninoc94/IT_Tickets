@@ -11,6 +11,7 @@ import {
   statusLabels,
 } from "@/lib/ticket-labels";
 import { DistributionBar } from "./distribution-bar";
+import { DonutChart } from "./donut-chart";
 import { PrintButton } from "./print-button";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
@@ -87,6 +88,21 @@ export default async function ReportsPage() {
   }
   const topAssignees = [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]);
 
+  // Avg resolution per technician
+  const techResolution = new Map<string, { sum: number; count: number }>();
+  for (const t of tickets) {
+    if (!t.assignee) continue;
+    const end = t.resolvedAt ?? t.closedAt;
+    if (!end) continue;
+    const ms = end.getTime() - t.createdAt.getTime();
+    const name = t.assignee.name;
+    const prev = techResolution.get(name) ?? { sum: 0, count: 0 };
+    techResolution.set(name, { sum: prev.sum + ms, count: prev.count + 1 });
+  }
+  const techResolutionRows = [...techResolution.entries()]
+    .map(([name, { sum, count }]) => ({ name, avg: sum / count, count }))
+    .sort((a, b) => a.avg - b.avg);
+
   // Time to resolution, falling back to the closure time for tickets that were
   // closed directly without first being marked "Risolto".
   const resolutionDurations = tickets
@@ -146,27 +162,62 @@ export default async function ReportsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="card space-y-3 p-5">
+        <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per stato</h2>
-          {(Object.keys(statusLabels) as TicketStatus[]).map((s) => (
-            <DistributionBar key={s} label={statusLabels[s]} count={statusCounts[s]} total={total} colorClass={statusBarClass[s]} />
-          ))}
+          <DonutChart data={[
+            { label: statusLabels.OPEN, value: statusCounts.OPEN, color: "#3b82f6" },
+            { label: statusLabels.IN_PROGRESS, value: statusCounts.IN_PROGRESS, color: "#f59e0b" },
+            { label: statusLabels.WAITING_ON_USER, value: statusCounts.WAITING_ON_USER, color: "#8b5cf6" },
+            { label: statusLabels.RESOLVED, value: statusCounts.RESOLVED, color: "#10b981" },
+            { label: statusLabels.CLOSED, value: statusCounts.CLOSED, color: "#6b7280" },
+          ]} />
         </div>
 
-        <div className="card space-y-3 p-5">
+        <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per priorità</h2>
-          {(Object.keys(priorityLabels) as TicketPriority[]).map((p) => (
-            <DistributionBar key={p} label={priorityLabels[p]} count={priorityCounts[p]} total={total} colorClass={priorityBarClass[p]} />
-          ))}
+          <DonutChart data={[
+            { label: priorityLabels.URGENT, value: priorityCounts.URGENT, color: "#ef4444" },
+            { label: priorityLabels.HIGH, value: priorityCounts.HIGH, color: "#f59e0b" },
+            { label: priorityLabels.MEDIUM, value: priorityCounts.MEDIUM, color: "#3b82f6" },
+            { label: priorityLabels.LOW, value: priorityCounts.LOW, color: "#10b981" },
+          ]} />
         </div>
 
-        <div className="card space-y-3 p-5">
+        <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per categoria</h2>
-          {(Object.keys(categoryLabels) as TicketCategory[]).map((c) => (
-            <DistributionBar key={c} label={categoryLabels[c]} count={categoryCounts[c]} total={total} colorClass={categoryBarClass[c]} />
-          ))}
+          <DonutChart data={[
+            { label: categoryLabels.HARDWARE, value: categoryCounts.HARDWARE, color: "#6366f1" },
+            { label: categoryLabels.SOFTWARE, value: categoryCounts.SOFTWARE, color: "#3b82f6" },
+            { label: categoryLabels.NETWORK, value: categoryCounts.NETWORK, color: "#10b981" },
+            { label: categoryLabels.ACCOUNT, value: categoryCounts.ACCOUNT, color: "#f59e0b" },
+            { label: categoryLabels.OTHER, value: categoryCounts.OTHER, color: "#6b7280" },
+          ]} />
         </div>
       </div>
+
+      {techResolutionRows.length > 0 && (
+        <div className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Tempo medio di risoluzione per tecnico</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-xs font-medium uppercase tracking-wide text-gray-400">
+                <th className="pb-2 text-left">Tecnico</th>
+                <th className="pb-2 text-right">Ticket risolti</th>
+                <th className="pb-2 text-right">Tempo medio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {techResolutionRows.map((row) => (
+                <tr key={row.name} className="border-b border-gray-50 last:border-0">
+                  <td className="py-2 text-gray-700">{row.name}</td>
+                  <td className="py-2 text-right text-gray-900">{row.count}</td>
+                  <td className="py-2 text-right font-medium text-gray-900">{formatDuration(row.avg)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="card p-5">

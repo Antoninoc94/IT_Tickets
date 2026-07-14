@@ -5,6 +5,7 @@ import { SettingsForm } from "./settings-form";
 import { StorageSection } from "./storage-section";
 import { GraphicsSection } from "./graphics-section";
 import { SlaSection } from "./sla-section";
+import { EmailFlagsSection } from "./email-flags-section";
 
 export default async function AdminSettingsPage() {
   const current = await getCurrentUser();
@@ -37,7 +38,15 @@ export default async function AdminSettingsPage() {
 
       <section className="space-y-4">
         <div className="border-b border-gray-200 pb-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Notifiche email</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Email — Impostazioni</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Abilita/disabilita le email, promemoria automatici e digest giornaliero.</p>
+        </div>
+        <EmailFlagsSection settings={settings} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Email — Template</h2>
           <p className="mt-0.5 text-xs text-gray-400">Template per le email automatiche inviate agli utenti e al team IT.</p>
         </div>
         <SettingsForm settings={settings} />

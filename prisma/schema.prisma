@@ -50,6 +50,13 @@ enum TicketEventType {
   CATEGORY_CHANGED
 }
 
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  color   String   @default("#6366f1")
+  tickets Ticket[]
+}
+
 model CannedResponse {
   id        String   @id @default(cuid())
   title     String
@@ -121,6 +128,7 @@ model Ticket {
   attachments Attachment[]
   events      TicketEvent[]
   views       TicketView[]
+  tags        Tag[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -160,6 +168,18 @@ model Setting {
 
   newCommentEmailSubject String @default("Nuovo commento sul ticket: {{ticketTitle}}")
   newCommentEmailBody    String @default("{{authorName}} ha commentato il tuo ticket.\n\n{{commentBody}}\n\n{{ticketUrl}}")
+
+  mentionEmailSubject String @default("Sei stato menzionato nel ticket: {{ticketTitle}}")
+  mentionEmailBody    String @default("{{authorName}} ti ha menzionato in un commento.\n\n{{commentBody}}\n\n{{ticketUrl}}")
+
+  // Email master switch — disabling it suppresses all outbound mail
+  emailEnabled Boolean @default(true)
+
+  // Auto-reminder: if set, sends a reminder email N days after the last activity on open tickets
+  reminderDays Int?
+
+  // Daily digest: if enabled, IT staff receive a morning summary of open tickets
+  digestEnabled Boolean @default(false)
 
   updatedAt DateTime @updatedAt
 }
