@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import {
   priorityBadgeClass,
   priorityLabels,
@@ -56,7 +57,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       : {}),
   };
 
-  const [tickets, total, myAssigned] = await Promise.all([
+  const [tickets, total, myAssigned, unreadRows] = await Promise.all([
     prisma.ticket.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -73,7 +74,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           take: 10,
         })
       : Promise.resolve([]),
+    prisma.$queryRaw<{ id: string }[]>(
+      Prisma.sql`
+        SELECT DISTINCT t.id
+        FROM "Ticket" t
+        WHERE ${user.role === "USER" ? Prisma.sql`t."requesterId" = ${user.id} AND` : Prisma.sql``}
+        EXISTS (
+          SELECT 1 FROM "Comment" c
+          WHERE c."ticketId" = t.id
+            AND ${user.role === "USER" ? Prisma.sql`c.internal = false AND` : Prisma.sql``}
+            c."createdAt" > COALESCE(
+              (SELECT tv."viewedAt" FROM "TicketView" tv
+               WHERE tv."userId" = ${user.id} AND tv."ticketId" = t.id),
+              '1970-01-01'::timestamptz
+            )
+            AND c."authorId" != ${user.id}
+        )
+      `
+    ),
   ]);
+
+  const unreadIds = new Set(unreadRows.map((r) => r.id));
 
   const [requesters, assignees] = isStaff
     ? await Promise.all([
@@ -183,12 +204,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="table-row">
+                {tickets.map((ticket) => {
+                  const unread = unreadIds.has(ticket.id);
+                  return (
+                  <tr key={ticket.id} className={`table-row${unread ? " bg-[color-mix(in_srgb,var(--brand)_4%,transparent)]" : ""}`}>
                     <td className="px-4 py-3">
-                      <Link href={`/tickets/${ticket.id}`} className="link-brand">
-                        {ticket.title}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        {unread && (
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--brand)]" title="Nuova attività" />
+                        )}
+                        <Link href={`/tickets/${ticket.id}`} className={`link-brand${unread ? " font-semibold" : ""}`}>
+                          {ticket.title}
+                        </Link>
+                      </div>
                       {ticket.tags.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
                           {ticket.tags.map((tag) => (
@@ -218,7 +246,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
