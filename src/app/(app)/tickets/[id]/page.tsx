@@ -51,7 +51,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   const itUsers = isStaff
     ? await prisma.user.findMany({
-        where: { role: { in: ["IT", "ADMIN"] }, active: true },
+        where: { role: "IT", active: true },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       })

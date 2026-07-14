@@ -79,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ? await Promise.all([
         prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
         prisma.user.findMany({
-          where: { role: { in: ["IT", "ADMIN"] }, active: true },
+          where: { role: "IT", active: true },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         }),
