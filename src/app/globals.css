@@ -35,10 +35,12 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] disabled:pointer-events-none disabled:opacity-60;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--foreground)] shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-60;
+    &:hover { background-color: color-mix(in srgb, var(--surface) 60%, var(--background)); }
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors disabled:pointer-events-none disabled:opacity-60;
+    &:hover { background-color: color-mix(in srgb, var(--surface) 40%, var(--background)); color: var(--foreground); }
   }
 
   .field-label {
@@ -83,6 +85,65 @@ body {
   .print-only {
     @apply hidden;
   }
+}
+
+/* Dark mode overrides for hardcoded Tailwind gray utilities.
+   These must be outside @layer so they beat the generated utilities in the cascade. */
+@media (prefers-color-scheme: dark) {
+  /* Text */
+  .text-gray-900 { color: #f1f5f9; }
+  .text-gray-800 { color: #e2e8f0; }
+  .text-gray-700 { color: #cbd5e1; }
+  .text-gray-600 { color: #94a3b8; }
+  .text-gray-500 { color: #8b9ab2; }
+  .text-gray-400 { color: #64748b; }
+
+  /* Backgrounds */
+  .bg-white    { background-color: var(--surface); }
+  .bg-gray-50  { background-color: color-mix(in srgb, var(--surface) 60%, var(--background)); }
+  .bg-gray-100 { background-color: color-mix(in srgb, var(--surface) 40%, var(--background)); }
+
+  /* Borders */
+  .border-gray-100 { border-color: var(--border); }
+  .border-gray-200 { border-color: var(--border); }
+  .border-gray-300 { border-color: color-mix(in srgb, var(--border) 150%, transparent); }
+
+  /* Hover states */
+  .hover\:bg-gray-50:hover  { background-color: color-mix(in srgb, var(--surface) 60%, var(--background)); }
+  .hover\:bg-gray-100:hover { background-color: color-mix(in srgb, var(--surface) 40%, var(--background)); }
+  .hover\:text-gray-700:hover { color: #cbd5e1; }
+  .hover\:text-gray-900:hover { color: #f1f5f9; }
+
+  /* Divide lines */
+  .divide-gray-100 > * + * { border-color: var(--border); }
+
+  /* Badge background overrides (keep text colors intentional) */
+  .bg-yellow-100  { background-color: #422006; }
+  .bg-blue-100    { background-color: #0c1a33; }
+  .bg-purple-100  { background-color: #1e0a33; }
+  .bg-green-100   { background-color: #052e16; }
+  .bg-orange-100  { background-color: #431407; }
+  .bg-red-100     { background-color: #450a0a; }
+  .bg-amber-100   { background-color: #3d1f02; }
+  .bg-indigo-100  { background-color: #1e1b4b; }
+  .bg-teal-100    { background-color: #042f2e; }
+
+  /* Badge text: keep them bright so they're readable on dark badge bg */
+  .text-yellow-800  { color: #fde68a; }
+  .text-blue-700,
+  .text-blue-800    { color: #93c5fd; }
+  .text-purple-700,
+  .text-purple-800  { color: #d8b4fe; }
+  .text-green-800   { color: #86efac; }
+  .text-orange-700  { color: #fdba74; }
+  .text-red-600,
+  .text-red-700     { color: #fca5a5; }
+  .text-amber-700   { color: #fcd34d; }
+  .text-gray-600    { color: #94a3b8; }
+
+  /* File input button */
+  .file\:bg-gray-100::file-selector-button { background-color: color-mix(in srgb, var(--surface) 40%, var(--background)); }
+  .file\:text-gray-700::file-selector-button { color: #cbd5e1; }
 }
 
 @media print {
