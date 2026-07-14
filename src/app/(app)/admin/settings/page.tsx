@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "./settings-form";
 import { StorageSection } from "./storage-section";
 import { GraphicsSection } from "./graphics-section";
+import { SlaSection } from "./sla-section";
 
 export default async function AdminSettingsPage() {
   const current = await getCurrentUser();
@@ -24,6 +25,8 @@ export default async function AdminSettingsPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Notifiche email</h2>
         <SettingsForm settings={settings} />
       </div>
+
+      <SlaSection settings={settings} />
 
       <StorageSection />
     </div>

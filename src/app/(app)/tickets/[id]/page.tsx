@@ -10,9 +10,13 @@ import {
 } from "@/lib/ticket-labels";
 import { CommentForm } from "./comment-form";
 import { TicketControls } from "./ticket-controls";
+import { getSettings } from "@/lib/settings";
+import { computeSla, formatRemaining } from "@/lib/sla";
 import { AttachmentList } from "./attachment-list";
 import { DeleteTicketButton } from "./delete-ticket-button";
 import { CloseTicketButton } from "./close-ticket-button";
+import { ReopenTicketButton } from "./reopen-ticket-button";
+import { TicketHistory } from "./ticket-history";
 import { LocalTime } from "@/app/local-time";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +31,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
         include: { author: true, attachments: true },
+        orderBy: { createdAt: "asc" },
+      },
+      events: {
+        include: { actor: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -46,17 +54,23 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       })
     : [];
 
+  const settings = await getSettings();
+  const sla = computeSla(ticket, settings);
+
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
   const canClose = ticket.status !== "CLOSED" && (isStaff || ticket.requesterId === user.id);
+  const canReopen = ticket.status === "CLOSED" && (isStaff || ticket.requesterId === user.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="card p-6">
         <div className="mb-3 flex items-start justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>{priorityLabels[ticket.priority]}</span>
             <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
+            {sla.status === "overdue" && <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>}
+            {sla.status === "warning" && <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>}
           </div>
         </div>
         <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{ticket.description}</p>
@@ -90,8 +104,9 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         />
       )}
 
-      {(canClose || canDelete) && (
+      {(canClose || canDelete || canReopen) && (
         <div className="flex items-center justify-end gap-3">
+          {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
           {canClose && <CloseTicketButton ticketId={ticket.id} />}
           {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
         </div>
@@ -129,6 +144,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
         ))}
       </div>
+
+      <TicketHistory events={ticket.events} />
 
       {ticket.status === "CLOSED" && !isStaff ? (
         <p className="text-center text-sm text-gray-400">Il ticket è chiuso. Non è possibile aggiungere nuovi commenti.</p>

@@ -155,6 +155,41 @@ export async function uploadFavicon(_state: FaviconState, formData: FormData): P
   return { success: true };
 }
 
+// ---------------------------------------------------------------------------
+// SLA
+// ---------------------------------------------------------------------------
+
+const SlaSchema = z.object({
+  slaUrgentHours:  z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaHighHours:    z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaMediumHours:  z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaLowHours:     z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+});
+
+export type SlaState = { error?: string; success?: boolean } | undefined;
+
+export async function updateSla(_state: SlaState, formData: FormData): Promise<SlaState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") return { error: "Non autorizzato." };
+
+  const validated = SlaSchema.safeParse({
+    slaUrgentHours: formData.get("slaUrgentHours"),
+    slaHighHours:   formData.get("slaHighHours"),
+    slaMediumHours: formData.get("slaMediumHours"),
+    slaLowHours:    formData.get("slaLowHours"),
+  });
+  if (!validated.success) return { error: "Valori non validi. Inserisci ore intere tra 1 e 8760." };
+
+  await prisma.setting.upsert({
+    where: { id: "app" },
+    update: validated.data,
+    create: { id: "app", ...validated.data },
+  });
+
+  revalidatePath("/admin/settings");
+  return { success: true };
+}
+
 export async function removeFavicon() {
   const user = await getCurrentUser();
   if (user.role !== "ADMIN") {

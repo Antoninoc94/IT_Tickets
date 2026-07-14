@@ -9,6 +9,8 @@ import {
 } from "@/lib/ticket-labels";
 import { pickEnum } from "@/lib/query-params";
 import { FilterBar } from "./filter-bar";
+import { getSettings } from "@/lib/settings";
+import { computeSla, formatRemaining } from "@/lib/sla";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 type SearchParams = {
@@ -63,6 +65,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         }),
       ])
     : [[], []];
+
+  const settings = await getSettings();
 
   const hasActiveFilters = Boolean(
     params.q || params.status || params.priority || params.category || params.requesterId || params.assigneeId
@@ -128,9 +132,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`badge ${statusBadgeClass[ticket.status]}`}>
-                      {statusLabels[ticket.status]}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`badge ${statusBadgeClass[ticket.status]}`}>
+                        {statusLabels[ticket.status]}
+                      </span>
+                      {(() => {
+                        const sla = computeSla(ticket, settings);
+                        if (sla.status === "overdue") return <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>;
+                        if (sla.status === "warning") return <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>;
+                        return null;
+                      })()}
+                    </div>
                   </td>
                 </tr>
               ))}

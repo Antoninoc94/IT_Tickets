@@ -11,6 +11,25 @@ import { statusLabels } from "@/lib/ticket-labels";
 import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
 import type { TicketStatus } from "@/generated/prisma/enums";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function createEvent(
+  ticketId: string,
+  actorId: string | null,
+  type: import("@/generated/prisma/enums").TicketEventType,
+  meta?: Record<string, string>
+) {
+  await prisma.ticketEvent.create({
+    data: { ticketId, actorId, type, meta: meta ?? {} },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Create ticket
+// ---------------------------------------------------------------------------
+
 const NewTicketSchema = z.object({
   title: z.string().trim().min(3, { error: "Il titolo deve avere almeno 3 caratteri." }),
   description: z.string().trim().min(10, { error: "Descrivi il problema con almeno 10 caratteri." }),
@@ -49,6 +68,8 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     },
   });
 
+  await createEvent(ticket.id, user.id, "CREATED");
+
   const itAndAdmins = await prisma.user.findMany({
     where: { role: { in: ["IT", "ADMIN"] }, active: true },
     select: { email: true },
@@ -68,6 +89,10 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
 
   redirect(`/tickets/${ticket.id}`);
 }
+
+// ---------------------------------------------------------------------------
+// Add comment
+// ---------------------------------------------------------------------------
 
 const CommentSchema = z.object({
   body: z.string().trim().min(1, { error: "Il commento non può essere vuoto." }),
@@ -141,11 +166,18 @@ export async function addComment(
   revalidatePath(`/tickets/${ticketId}`);
 }
 
+// ---------------------------------------------------------------------------
+// Update status (staff only)
+// ---------------------------------------------------------------------------
+
 export async function updateTicketStatus(ticketId: string, status: TicketStatus) {
   const user = await getCurrentUser();
   if (user.role === "USER") {
     throw new Error("Non autorizzato.");
   }
+
+  const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { status: true } });
+  if (!current) return;
 
   const ticket = await prisma.ticket.update({
     where: { id: ticketId },
@@ -156,6 +188,8 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
     },
     include: { requester: true },
   });
+
+  await createEvent(ticketId, user.id, "STATUS_CHANGED", { from: current.status, to: status });
 
   const settings = await getSettings();
   const vars = {
@@ -172,6 +206,10 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/dashboard");
 }
+
+// ---------------------------------------------------------------------------
+// Close ticket
+// ---------------------------------------------------------------------------
 
 export type CloseTicketState = { error?: string } | undefined;
 
@@ -191,11 +229,15 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
     return;
   }
 
+  const prevStatus = ticket.status;
+
   const updated = await prisma.ticket.update({
     where: { id: ticketId },
     data: { status: "CLOSED", closedAt: new Date() },
     include: { requester: true },
   });
+
+  await createEvent(ticketId, user.id, "CLOSED", { from: prevStatus });
 
   if (isStaff) {
     const settings = await getSettings();
@@ -210,6 +252,89 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/dashboard");
 }
+
+// ---------------------------------------------------------------------------
+// Reopen ticket
+// ---------------------------------------------------------------------------
+
+export type ReopenTicketState = { error?: string } | undefined;
+
+const ReopenSchema = z.object({
+  reason: z.string().trim().min(5, { error: "Descrivi brevemente il motivo della riapertura (min. 5 caratteri)." }),
+});
+
+export async function reopenTicket(
+  ticketId: string,
+  _state: ReopenTicketState,
+  formData: FormData
+): Promise<ReopenTicketState> {
+  const user = await getCurrentUser();
+
+  const validated = ReopenSchema.safeParse({ reason: formData.get("reason") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: { requester: true },
+  });
+  if (!ticket) return { error: "Ticket non trovato." };
+
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non puoi riaprire questo ticket." };
+  }
+  if (ticket.status !== "CLOSED") {
+    return { error: "Il ticket non è chiuso." };
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { status: "OPEN", closedAt: null },
+  });
+
+  await prisma.comment.create({
+    data: {
+      ticketId,
+      authorId: user.id,
+      body: `Ticket riaperto. Motivo: ${validated.data.reason}`,
+      internal: false,
+    },
+  });
+
+  await createEvent(ticketId, user.id, "REOPENED");
+
+  // Notify IT/Admin when a user reopens their ticket
+  if (!isStaff) {
+    const settings = await getSettings();
+    const itAndAdmins = await prisma.user.findMany({
+      where: { role: { in: ["IT", "ADMIN"] }, active: true },
+      select: { email: true },
+    });
+    const vars = {
+      ticketTitle: ticket.title,
+      status: statusLabels.OPEN,
+      ticketUrl: ticketUrl(ticket.id),
+    };
+    await Promise.all(
+      itAndAdmins.map((r) =>
+        sendMail(
+          r.email,
+          renderTemplate(settings.statusChangedEmailSubject, vars),
+          renderTemplate(settings.statusChangedEmailBody, vars)
+        )
+      )
+    );
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Delete ticket
+// ---------------------------------------------------------------------------
 
 export type DeleteTicketState = { error?: string } | undefined;
 
@@ -238,21 +363,26 @@ export async function deleteTicket(ticketId: string): Promise<DeleteTicketState>
   redirect("/dashboard");
 }
 
+// ---------------------------------------------------------------------------
+// Assign ticket
+// ---------------------------------------------------------------------------
+
 export async function assignTicket(ticketId: string, assigneeId: string) {
   const user = await getCurrentUser();
   if (user.role === "USER") {
     throw new Error("Non autorizzato.");
   }
 
-  const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { status: true } });
+  const current = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { status: true, assigneeId: true },
+  });
   if (!current) return;
 
   const assignee = assigneeId
     ? await prisma.user.findUnique({ where: { id: assigneeId } })
     : null;
 
-  // Claiming an untouched ticket implicitly starts work on it; don't override
-  // a status someone deliberately set (e.g. WAITING_ON_USER) on reassignment.
   const autoStart = Boolean(assignee) && current.status === "OPEN";
 
   const ticket = await prisma.ticket.update({
@@ -263,6 +393,16 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
     },
     include: { requester: true },
   });
+
+  if (assignee) {
+    await createEvent(ticketId, user.id, "ASSIGNED", { assigneeName: assignee.name });
+  } else {
+    await createEvent(ticketId, user.id, "UNASSIGNED");
+  }
+
+  if (autoStart) {
+    await createEvent(ticketId, user.id, "STATUS_CHANGED", { from: "OPEN", to: "IN_PROGRESS" });
+  }
 
   const settings = await getSettings();
 
