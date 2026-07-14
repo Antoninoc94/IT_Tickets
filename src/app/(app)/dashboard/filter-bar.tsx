@@ -32,11 +32,19 @@ export function FilterBar({
     requesterId?: string;
     assigneeId?: string;
     tagId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    sort?: string;
+    dir?: string;
   };
   hasActiveFilters: boolean;
 }) {
   return (
     <form method="GET" className="card flex flex-wrap items-end gap-3 p-4">
+      {/* Preserve sort state through filter changes */}
+      {values.sort && <input type="hidden" name="sort" value={values.sort} />}
+      {values.dir && <input type="hidden" name="dir" value={values.dir} />}
+
       <div className="min-w-[12rem] flex-1">
         <label className="field-label">Cerca</label>
         <input
@@ -139,6 +147,26 @@ export function FilterBar({
           </select>
         </div>
       )}
+
+      <div>
+        <label className="field-label">Data da</label>
+        <input
+          type="date"
+          name="dateFrom"
+          defaultValue={values.dateFrom ?? ""}
+          className="field-input"
+        />
+      </div>
+
+      <div>
+        <label className="field-label">Data a</label>
+        <input
+          type="date"
+          name="dateTo"
+          defaultValue={values.dateTo ?? ""}
+          className="field-input"
+        />
+      </div>
 
       <button type="submit" className="btn-secondary">
         Filtra

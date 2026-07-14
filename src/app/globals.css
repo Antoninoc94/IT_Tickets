@@ -3,6 +3,19 @@
 :root {
   --background: #f4f5f7;
   --foreground: #111827;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --muted: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1117;
+    --foreground: #f1f5f9;
+    --surface: #1e2130;
+    --border: #2d3148;
+    --muted: #8b9ab2;
+  }
 }
 
 @theme inline {
@@ -22,17 +35,17 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] disabled:pointer-events-none disabled:opacity-60;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-60;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:pointer-events-none disabled:opacity-60;
   }
 
   .field-label {
-    @apply mb-1.5 block text-sm font-medium text-gray-700;
+    @apply mb-1.5 block text-sm font-medium text-[var(--foreground)];
   }
   .field-input {
-    @apply w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand)_20%,transparent)];
+    @apply w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm placeholder:text-[var(--muted)] focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand)_20%,transparent)];
   }
 
   .link-brand {
@@ -43,17 +56,17 @@ body {
   }
 
   .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm;
   }
 
   .table-shell {
-    @apply overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm;
   }
   .table-header {
-    @apply border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500;
+    @apply border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_50%,var(--background))] text-left text-xs font-semibold uppercase tracking-wide text-[var(--muted)];
   }
   .table-row {
-    @apply border-b border-gray-100 text-gray-800 last:border-0 hover:bg-gray-50;
+    @apply border-b border-[var(--border)] text-[var(--foreground)] last:border-0 hover:bg-[color-mix(in_srgb,var(--surface)_70%,var(--background))];
   }
 
   .badge {
@@ -61,10 +74,10 @@ body {
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight text-gray-900;
+    @apply text-2xl font-semibold tracking-tight text-[var(--foreground)];
   }
   .page-subtitle {
-    @apply mt-1 text-sm text-gray-500;
+    @apply mt-1 text-sm text-[var(--muted)];
   }
 
   .print-only {

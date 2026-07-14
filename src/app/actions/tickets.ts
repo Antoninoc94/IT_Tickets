@@ -62,10 +62,20 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     ? (formData.getAll("tagIds") as string[]).filter(Boolean)
     : [];
 
+  const requesterId =
+    user.role !== "USER" && formData.get("requesterId")
+      ? String(formData.get("requesterId"))
+      : user.id;
+
+  if (requesterId !== user.id) {
+    const requester = await prisma.user.findUnique({ where: { id: requesterId, active: true } });
+    if (!requester) return { error: "Utente richiedente non trovato." };
+  }
+
   const ticket = await prisma.ticket.create({
     data: {
       ...validated.data,
-      requesterId: user.id,
+      requesterId,
       attachments: {
         create: saved.map((f) => ({ ...f, uploadedById: user.id })),
       },
@@ -449,6 +459,42 @@ export async function updateTicketMeta(
   }
 
   revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Assign ticket
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Bulk actions (staff only)
+// ---------------------------------------------------------------------------
+
+export async function bulkUpdateStatus(ids: string[], status: TicketStatus) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+  if (ids.length === 0) return;
+  const now = new Date();
+  await prisma.ticket.updateMany({
+    where: { id: { in: ids } },
+    data: {
+      status,
+      ...(status === "RESOLVED" ? { resolvedAt: now } : {}),
+      ...(status === "CLOSED" ? { closedAt: now } : {}),
+      updatedAt: now,
+    },
+  });
+  revalidatePath("/dashboard");
+}
+
+export async function bulkAssign(ids: string[], assigneeId: string | null) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+  if (ids.length === 0) return;
+  await prisma.ticket.updateMany({
+    where: { id: { in: ids } },
+    data: { assigneeId: assigneeId || null, updatedAt: new Date() },
+  });
   revalidatePath("/dashboard");
 }
 

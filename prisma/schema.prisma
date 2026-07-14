@@ -57,6 +57,17 @@ model Tag {
   tickets Ticket[]
 }
 
+model TicketTemplate {
+  id          String          @id @default(cuid())
+  name        String
+  title       String          @default("")
+  description String          @default("")
+  category    TicketCategory?
+  priority    TicketPriority?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
 model CannedResponse {
   id        String   @id @default(cuid())
   title     String

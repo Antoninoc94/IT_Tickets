@@ -51,18 +51,32 @@ export default async function ReportsPage() {
 
   const settings = await getSettings();
 
-  const tickets = await prisma.ticket.findMany({
-    select: {
-      status: true,
-      priority: true,
-      category: true,
-      createdAt: true,
-      resolvedAt: true,
-      closedAt: true,
-      requester: { select: { name: true } },
-      assignee: { select: { name: true } },
-    },
-  });
+  const [tickets, ticketsWithFirstResponse] = await Promise.all([
+    prisma.ticket.findMany({
+      select: {
+        status: true,
+        priority: true,
+        category: true,
+        createdAt: true,
+        resolvedAt: true,
+        closedAt: true,
+        requester: { select: { name: true } },
+        assignee: { select: { name: true } },
+      },
+    }),
+    prisma.ticket.findMany({
+      select: {
+        id: true,
+        createdAt: true,
+        comments: {
+          where: { internal: false, author: { role: "IT" } },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { createdAt: true, author: { select: { name: true } } },
+        },
+      },
+    }),
+  ]);
 
   const total = tickets.length;
 
@@ -119,6 +133,26 @@ export default async function ReportsPage() {
       ? resolutionDurations.reduce((sum, ms) => sum + ms, 0) / resolutionDurations.length
       : null;
 
+  // First response time per technician
+  const techFirstResponse = new Map<string, { sum: number; count: number }>();
+  let totalFirstResponseMs = 0;
+  let firstResponseCount = 0;
+  for (const t of ticketsWithFirstResponse) {
+    const firstComment = t.comments[0];
+    if (!firstComment) continue;
+    const ms = firstComment.createdAt.getTime() - t.createdAt.getTime();
+    if (ms < 0) continue;
+    totalFirstResponseMs += ms;
+    firstResponseCount++;
+    const name = firstComment.author.name;
+    const prev = techFirstResponse.get(name) ?? { sum: 0, count: 0 };
+    techFirstResponse.set(name, { sum: prev.sum + ms, count: prev.count + 1 });
+  }
+  const avgFirstResponseMs = firstResponseCount > 0 ? totalFirstResponseMs / firstResponseCount : null;
+  const techFirstResponseRows = [...techFirstResponse.entries()]
+    .map(([name, { sum, count }]) => ({ name, avg: sum / count, count }))
+    .sort((a, b) => a.avg - b.avg);
+
   const { last30, prev30 } = trendCounts(tickets.map((t) => t.createdAt));
   const trendDelta = last30 - prev30;
 
@@ -149,7 +183,7 @@ export default async function ReportsPage() {
         <div className="card p-4">
           <p className="text-2xl font-semibold text-gray-900">{avgResolutionMs ? formatDuration(avgResolutionMs) : "—"}</p>
           <p className="text-xs text-gray-500">Tempo medio di risoluzione</p>
-          <p className="mt-1 text-[10px] text-gray-400">Dalla creazione alla data di Risolto o Chiuso</p>
+          <p className="mt-1 text-[10px] text-gray-400">Dalla creazione a Risolto/Chiuso</p>
         </div>
         <div className="card p-4">
           <p className="text-2xl font-semibold text-gray-900">
@@ -161,6 +195,19 @@ export default async function ReportsPage() {
             )}
           </p>
           <p className="text-xs text-gray-500">Nuovi ticket (ultimi 30gg)</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="card p-4">
+          <p className="text-2xl font-semibold text-gray-900">{avgFirstResponseMs ? formatDuration(avgFirstResponseMs) : "—"}</p>
+          <p className="text-xs text-gray-500">Tempo medio prima risposta IT</p>
+          <p className="mt-1 text-[10px] text-gray-400">Dalla creazione al primo commento pubblico IT</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-2xl font-semibold text-gray-900">{firstResponseCount}</p>
+          <p className="text-xs text-gray-500">Ticket con almeno una risposta IT</p>
+          <p className="mt-1 text-[10px] text-gray-400">Su {total} totali</p>
         </div>
       </div>
 
@@ -198,25 +245,37 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {techResolutionRows.length > 0 && (
+      {(techResolutionRows.length > 0 || techFirstResponseRows.length > 0) && (
         <div className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Tempo medio di risoluzione per tecnico</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Statistiche per tecnico</h2>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-xs font-medium uppercase tracking-wide text-gray-400">
                 <th className="pb-2 text-left">Tecnico</th>
                 <th className="pb-2 text-right">Ticket risolti</th>
-                <th className="pb-2 text-right">Tempo medio</th>
+                <th className="pb-2 text-right">Tempo medio risoluzione</th>
+                <th className="pb-2 text-right">Prima risposta media</th>
               </tr>
             </thead>
             <tbody>
-              {techResolutionRows.map((row) => (
-                <tr key={row.name} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2 text-gray-700">{row.name}</td>
-                  <td className="py-2 text-right text-gray-900">{row.count}</td>
-                  <td className="py-2 text-right font-medium text-gray-900">{formatDuration(row.avg)}</td>
-                </tr>
-              ))}
+              {(() => {
+                const techNames = new Set([
+                  ...techResolutionRows.map((r) => r.name),
+                  ...techFirstResponseRows.map((r) => r.name),
+                ]);
+                return [...techNames].map((name) => {
+                  const res = techResolutionRows.find((r) => r.name === name);
+                  const fr = techFirstResponseRows.find((r) => r.name === name);
+                  return (
+                    <tr key={name} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 text-gray-700">{name}</td>
+                      <td className="py-2 text-right text-gray-900">{res?.count ?? "—"}</td>
+                      <td className="py-2 text-right font-medium text-gray-900">{res ? formatDuration(res.avg) : "—"}</td>
+                      <td className="py-2 text-right font-medium text-gray-900">{fr ? formatDuration(fr.avg) : "—"}</td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>

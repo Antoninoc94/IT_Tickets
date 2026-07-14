@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { createTicket } from "@/app/actions/tickets";
 import { categoryLabels, priorityLabels } from "@/lib/ticket-labels";
+import type { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
 
 const MAX_FILE_MB = 25;
 const MAX_FILES = 5;
@@ -19,11 +20,36 @@ function checkFiles(files: FileList | null): string | null {
 }
 
 type Tag = { id: string; name: string; color: string };
+type Template = {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  category: TicketCategory | null;
+  priority: TicketPriority | null;
+};
+type User = { id: string; name: string };
 
-export function NewTicketForm({ tags }: { tags: Tag[] }) {
+export function NewTicketForm({
+  tags,
+  templates,
+  allUsers,
+  currentUserId,
+  isStaff,
+}: {
+  tags: Tag[];
+  templates: Template[];
+  allUsers: User[];
+  currentUserId: string;
+  isStaff: boolean;
+}) {
   const [state, action, pending] = useActionState(createTicket, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [priority, setPriority] = useState("");
 
   function toggleTag(id: string) {
     setSelectedTags((prev) => {
@@ -31,6 +57,15 @@ export function NewTicketForm({ tags }: { tags: Tag[] }) {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  function applyTemplate(templateId: string) {
+    const tpl = templates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    if (tpl.title) setTitle(tpl.title);
+    if (tpl.description) setDescription(tpl.description);
+    if (tpl.category) setCategory(tpl.category);
+    if (tpl.priority) setPriority(tpl.priority);
   }
 
   return (
@@ -41,9 +76,46 @@ export function NewTicketForm({ tags }: { tags: Tag[] }) {
       </div>
 
       <form action={action} className="card space-y-5 p-6">
+        {isStaff && templates.length > 0 && (
+          <div>
+            <label className="field-label">Usa modello (opzionale)</label>
+            <select
+              defaultValue=""
+              onChange={(e) => { applyTemplate(e.target.value); e.target.value = ""; }}
+              className="field-input"
+            >
+              <option value="" disabled>— Seleziona un modello —</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {isStaff && allUsers.length > 0 && (
+          <div>
+            <label htmlFor="requesterId" className="field-label">Per conto di</label>
+            <select id="requesterId" name="requesterId" defaultValue={currentUserId} className="field-input">
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.id === currentUserId ? `${u.name} (io)` : u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label htmlFor="title" className="field-label">Titolo</label>
-          <input id="title" name="title" required placeholder="Es. Stampante ufficio non funziona" className="field-input" />
+          <input
+            id="title"
+            name="title"
+            required
+            placeholder="Es. Stampante ufficio non funziona"
+            className="field-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </div>
 
         <div>
@@ -55,13 +127,22 @@ export function NewTicketForm({ tags }: { tags: Tag[] }) {
             rows={5}
             placeholder="Descrivi cosa succede, da quando e come riprodurlo..."
             className="field-input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="category" className="field-label">Categoria</label>
-            <select id="category" name="category" defaultValue="" required className="field-input">
+            <select
+              id="category"
+              name="category"
+              required
+              className="field-input"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
               <option value="" disabled>— Seleziona —</option>
               {Object.entries(categoryLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -71,7 +152,14 @@ export function NewTicketForm({ tags }: { tags: Tag[] }) {
 
           <div>
             <label htmlFor="priority" className="field-label">Priorità</label>
-            <select id="priority" name="priority" defaultValue="" required className="field-input">
+            <select
+              id="priority"
+              name="priority"
+              required
+              className="field-input"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            >
               <option value="" disabled>— Seleziona —</option>
               {Object.entries(priorityLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -80,7 +168,7 @@ export function NewTicketForm({ tags }: { tags: Tag[] }) {
           </div>
         </div>
 
-        {tags.length > 0 && (
+        {isStaff && tags.length > 0 && (
           <div>
             <p className="field-label mb-2">Etichette (opzionale)</p>
             <div className="flex flex-wrap gap-2">

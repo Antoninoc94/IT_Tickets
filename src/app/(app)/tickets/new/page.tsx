@@ -4,9 +4,27 @@ import { NewTicketForm } from "./new-ticket-form";
 
 export default async function NewTicketPage() {
   const user = await getCurrentUser();
-  const tags = user.role !== "USER"
-    ? await prisma.tag.findMany({ orderBy: { name: "asc" } })
-    : [];
+  const isStaff = user.role !== "USER";
 
-  return <NewTicketForm tags={tags} />;
+  const [tags, templates, allUsers] = isStaff
+    ? await Promise.all([
+        prisma.tag.findMany({ orderBy: { name: "asc" } }),
+        prisma.ticketTemplate.findMany({ orderBy: { name: "asc" } }),
+        prisma.user.findMany({
+          where: { active: true },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+      ])
+    : [[], [], []];
+
+  return (
+    <NewTicketForm
+      tags={tags}
+      templates={templates}
+      allUsers={allUsers}
+      currentUserId={user.id}
+      isStaff={isStaff}
+    />
+  );
 }
