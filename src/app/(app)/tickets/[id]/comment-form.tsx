@@ -145,7 +145,7 @@ export function CommentForm({
           name="body"
           required
           rows={3}
-          placeholder="Scrivi un commento... usa @ per menzionare un utente"
+          placeholder={mentionableUsers.length > 0 ? "Scrivi un commento... usa @ per menzionare un utente" : "Scrivi un commento..."}
           className="field-input"
           onChange={handleTextareaChange}
           onKeyDown={handleKeyDown}
