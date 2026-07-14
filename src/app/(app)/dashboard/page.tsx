@@ -11,6 +11,7 @@ import {
 import { pickEnum } from "@/lib/query-params";
 import { FilterBar } from "./filter-bar";
 import { getSettings } from "@/lib/settings";
+import { LocalTime } from "@/app/local-time";
 import { computeSla, formatRemaining } from "@/lib/sla";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
@@ -247,9 +248,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-gray-400 tabular-nums">
-                      {ticket.updatedAt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "2-digit" })}
-                      <br />
-                      <span>{ticket.updatedAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
+                      <LocalTime date={ticket.updatedAt} />
                     </td>
                   </tr>
                   );
