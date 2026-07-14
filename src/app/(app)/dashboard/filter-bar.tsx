@@ -4,6 +4,7 @@ import Link from "next/link";
 import { categoryLabels, priorityLabels, statusLabels } from "@/lib/ticket-labels";
 
 type Option = { id: string; name: string };
+type Tag = { id: string; name: string; color: string };
 
 function submitOnChange(e: React.ChangeEvent<HTMLSelectElement>) {
   e.currentTarget.form?.requestSubmit();
@@ -13,6 +14,7 @@ export function FilterBar({
   isStaff,
   requesters,
   assignees,
+  allTags = [],
   currentUserId,
   values,
   hasActiveFilters,
@@ -20,6 +22,7 @@ export function FilterBar({
   isStaff: boolean;
   requesters: Option[];
   assignees: Option[];
+  allTags?: Tag[];
   currentUserId: string;
   values: {
     q?: string;
@@ -28,6 +31,7 @@ export function FilterBar({
     category?: string;
     requesterId?: string;
     assigneeId?: string;
+    tagId?: string;
   };
   hasActiveFilters: boolean;
 }) {
@@ -120,6 +124,20 @@ export function FilterBar({
             </select>
           </div>
         </>
+      )}
+
+      {allTags.length > 0 && (
+        <div>
+          <label className="field-label">Etichetta</label>
+          <select name="tagId" defaultValue={values.tagId ?? ""} onChange={submitOnChange} className="field-input">
+            <option value="">Tutte</option>
+            {allTags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       <button type="submit" className="btn-secondary">

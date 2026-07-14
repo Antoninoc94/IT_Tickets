@@ -24,6 +24,7 @@ type SearchParams = {
   category?: string;
   requesterId?: string;
   assigneeId?: string;
+  tagId?: string;
   page?: string;
 };
 
@@ -37,6 +38,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const category = pickEnum<TicketCategory>(params.category, ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]);
   const q = params.q?.trim();
   const assigneeId = isStaff && params.assigneeId ? (params.assigneeId === "me" ? user.id : params.assigneeId) : undefined;
+  const tagId = params.tagId || undefined;
 
   const page = Math.max(1, parseInt(params.page ?? "1") || 1);
   const skip = (page - 1) * PAGE_SIZE;
@@ -48,6 +50,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ...(priority ? { priority } : {}),
     ...(category ? { category } : {}),
     ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
+    ...(tagId ? { tags: { some: { id: tagId } } } : {}),
     ...(q
       ? {
           OR: [
@@ -97,7 +100,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const unreadIds = new Set(unreadRows.map((r) => r.id));
 
-  const [requesters, assignees] = isStaff
+  const [requesters, assignees, allTags] = isStaff
     ? await Promise.all([
         prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
         prisma.user.findMany({
@@ -105,14 +108,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         }),
+        prisma.tag.findMany({ orderBy: { name: "asc" } }),
       ])
-    : [[], []];
+    : [[], [], []];
 
   const settings = await getSettings();
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const hasActiveFilters = Boolean(
-    params.q || params.status || params.priority || params.category || params.requesterId || params.assigneeId
+    params.q || params.status || params.priority || params.category || params.requesterId || params.assigneeId || params.tagId
   );
 
   const exportParams = new URLSearchParams();
@@ -122,6 +126,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (params.category) exportParams.set("category", params.category);
   if (params.requesterId) exportParams.set("requesterId", params.requesterId);
   if (params.assigneeId) exportParams.set("assigneeId", params.assigneeId);
+  if (params.tagId) exportParams.set("tagId", params.tagId);
   const exportHref = `/api/tickets/export?${exportParams.toString()}`;
 
   function pageHref(p: number) {
@@ -179,6 +184,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         isStaff={isStaff}
         requesters={requesters}
         assignees={assignees}
+        allTags={allTags}
         currentUserId={user.id}
         values={params}
         hasActiveFilters={hasActiveFilters}
