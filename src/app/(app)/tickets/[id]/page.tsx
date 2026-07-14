@@ -18,6 +18,7 @@ import { CloseTicketButton } from "./close-ticket-button";
 import { ReopenTicketButton } from "./reopen-ticket-button";
 import { TicketHistory } from "./ticket-history";
 import { LocalTime } from "@/app/local-time";
+import { renderWithMentions } from "@/lib/render-mentions";
 import { ViewTracker } from "./view-tracker";
 import { TagEditor } from "./tag-editor";
 
@@ -56,6 +57,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         orderBy: { name: "asc" },
       })
     : [];
+
+  const mentionableNames = [
+    ...itUsers.map((u) => u.name),
+    ticket.requester.name,
+    ...(ticket.assignee ? [ticket.assignee.name] : []),
+  ].filter((v, i, a) => a.indexOf(v) === i);
 
   const [settings, cannedResponses, allTags] = await Promise.all([
     getSettings(),
@@ -160,7 +167,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </span>
               <LocalTime date={comment.createdAt} />
             </div>
-            <p className="whitespace-pre-wrap text-gray-800">{comment.body}</p>
+            <p className="whitespace-pre-wrap text-gray-800">{renderWithMentions(comment.body, mentionableNames)}</p>
             {comment.attachments.length > 0 && (
               <div className="mt-2">
                 <AttachmentList attachments={comment.attachments} />
