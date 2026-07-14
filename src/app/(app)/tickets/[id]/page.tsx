@@ -175,7 +175,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       {ticket.status === "CLOSED" && !isStaff ? (
         <p className="text-center text-sm text-gray-400">Il ticket è chiuso. Non è possibile aggiungere nuovi commenti.</p>
       ) : (
-        <CommentForm ticketId={ticket.id} canWriteInternal={isStaff} cannedResponses={cannedResponses} />
+        <CommentForm ticketId={ticket.id} canWriteInternal={isStaff} cannedResponses={cannedResponses} mentionableUsers={itUsers} />
       )}
     </div>
   );

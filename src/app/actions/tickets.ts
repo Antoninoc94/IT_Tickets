@@ -58,6 +58,10 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     return { error: uploadError };
   }
 
+  const tagIds = user.role !== "USER"
+    ? (formData.getAll("tagIds") as string[]).filter(Boolean)
+    : [];
+
   const ticket = await prisma.ticket.create({
     data: {
       ...validated.data,
@@ -65,6 +69,7 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
       attachments: {
         create: saved.map((f) => ({ ...f, uploadedById: user.id })),
       },
+      ...(tagIds.length > 0 ? { tags: { connect: tagIds.map((id) => ({ id })) } } : {}),
     },
   });
 

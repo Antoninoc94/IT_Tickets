@@ -18,15 +18,18 @@ function checkFiles(files: FileList | null): string | null {
 }
 
 type CannedResponse = { id: string; title: string; body: string };
+type MentionUser = { name: string };
 
 export function CommentForm({
   ticketId,
   canWriteInternal,
   cannedResponses = [],
+  mentionableUsers = [],
 }: {
   ticketId: string;
   canWriteInternal: boolean;
   cannedResponses?: CannedResponse[];
+  mentionableUsers?: MentionUser[];
 }) {
   const action = addComment.bind(null, ticketId);
   const [state, formAction, pending] = useActionState<CommentState, FormData>(action, undefined);
@@ -73,6 +76,18 @@ export function CommentForm({
         placeholder="Scrivi un commento..."
         className="field-input"
       />
+      {mentionableUsers.length > 0 && (
+        <p className="text-xs text-gray-400">
+          Scrivi <span className="font-medium text-gray-500">@Nome</span> per menzionare un utente e inviargli una notifica email.{" "}
+          Disponibili:{" "}
+          {mentionableUsers.map((u, i) => (
+            <span key={u.name}>
+              <span className="font-medium text-gray-500">@{u.name}</span>
+              {i < mentionableUsers.length - 1 ? ", " : ""}
+            </span>
+          ))}
+        </p>
+      )}
 
       <div>
         <input
