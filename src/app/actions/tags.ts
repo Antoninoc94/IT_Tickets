@@ -14,7 +14,7 @@ export type TagState = { error?: string } | undefined;
 
 export async function createTag(_state: TagState, formData: FormData): Promise<TagState> {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
 
   const validated = TagSchema.safeParse({ name: formData.get("name"), color: formData.get("color") });
   if (!validated.success) return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
@@ -29,7 +29,7 @@ export async function createTag(_state: TagState, formData: FormData): Promise<T
 
 export async function deleteTag(id: string) {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
   await prisma.tag.delete({ where: { id } });
   revalidatePath("/admin/tags");
 }

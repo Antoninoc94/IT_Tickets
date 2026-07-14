@@ -5,7 +5,7 @@ import { TagsClient } from "./tags-client";
 
 export default async function TagsPage() {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (user.role === "USER") redirect("/dashboard");
 
   const tags = await prisma.tag.findMany({ orderBy: { name: "asc" } });
 

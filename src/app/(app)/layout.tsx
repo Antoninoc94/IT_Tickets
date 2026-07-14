@@ -32,9 +32,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Nuovo ticket
               </Link>
               {user.role !== "USER" && (
-                <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                  Report
-                </Link>
+                <>
+                  <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Report
+                  </Link>
+                  <Link href="/admin/tags" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Etichette
+                  </Link>
+                </>
               )}
               {user.role === "ADMIN" && (
                 <>
@@ -46,9 +51,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   </Link>
                   <Link href="/admin/canned-responses" className="text-sm font-medium text-gray-600 hover:text-gray-900">
                     Risposte
-                  </Link>
-                  <Link href="/admin/tags" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                    Etichette
                   </Link>
                 </>
               )}
