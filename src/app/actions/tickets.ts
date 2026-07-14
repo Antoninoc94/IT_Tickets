@@ -154,6 +154,11 @@ export async function addComment(
     },
   });
 
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { updatedAt: new Date() },
+  });
+
   if (!isInternal) {
     const settings = await getSettings();
     const vars = {
