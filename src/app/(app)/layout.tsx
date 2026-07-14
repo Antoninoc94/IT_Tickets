@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 import { BrandInline } from "@/app/brand";
 import { UnreadBadge } from "./unread-badge";
+import { ThemeToggle } from "@/app/theme-toggle";
 
 const roleBadgeClass: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700",
@@ -60,6 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </nav>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <div className="hidden text-right sm:block">
               <Link href="/account/profile" className="text-sm font-medium text-gray-900 hover:text-[var(--brand)]">
                 {user.name}

@@ -41,6 +41,10 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       style={{ "--brand": settings.brandColor } as React.CSSProperties}
     >
+      <head>
+        {/* Runs before paint to avoid flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme'),d=document.documentElement;if(t==='dark')d.setAttribute('data-theme','dark');else if(t==='light')d.setAttribute('data-theme','light');else d.setAttribute('data-theme',window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');}catch(e){}})();` }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
