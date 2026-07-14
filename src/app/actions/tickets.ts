@@ -180,23 +180,21 @@ export async function addComment(
           renderTemplate(settings.newCommentEmailBody, vars)
         );
       }
-      // @mention notifications
-      const mentionedNames = [...new Set((validated.data.body.match(/@([\w\s]+?)(?=\s|$|[,.])/g) ?? []).map((m) => m.slice(1).trim()))];
-      if (mentionedNames.length > 0) {
-        const mentionedUsers = await prisma.user.findMany({
-          where: { name: { in: mentionedNames }, active: true, id: { not: user.id } },
-          select: { email: true },
-        });
-        await Promise.all(
-          mentionedUsers.map((u) =>
-            sendMail(
-              u.email,
-              renderTemplate(settings.mentionEmailSubject, vars),
-              renderTemplate(settings.mentionEmailBody, vars)
-            )
+      // @mention notifications — check each active user's name directly in the text
+      const allUsers = await prisma.user.findMany({
+        where: { active: true, id: { not: user.id } },
+        select: { email: true, name: true },
+      });
+      const mentionedUsers = allUsers.filter((u) => validated.data.body.includes(`@${u.name}`));
+      await Promise.all(
+        mentionedUsers.map((u) =>
+          sendMail(
+            u.email,
+            renderTemplate(settings.mentionEmailSubject, vars),
+            renderTemplate(settings.mentionEmailBody, vars)
           )
-        );
-      }
+        )
+      );
     }
   }
 
