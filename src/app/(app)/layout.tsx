@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 import { BrandInline } from "@/app/brand";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { UnreadBadge } from "./unread-badge";
 
 const roleBadgeClass: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700",
@@ -15,27 +14,6 @@ const roleBadgeClass: Record<string, string> = {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (user.mustChangePassword) redirect("/change-password");
-
-  // Count tickets with unread comments (public comments newer than last view)
-  const result = await prisma.$queryRaw<[{ count: bigint }]>(
-    Prisma.sql`
-      SELECT COUNT(DISTINCT t.id)::bigint AS count
-      FROM "Ticket" t
-      WHERE ${user.role === "USER" ? Prisma.sql`t."requesterId" = ${user.id} AND` : Prisma.sql``}
-      EXISTS (
-        SELECT 1 FROM "Comment" c
-        WHERE c."ticketId" = t.id
-          AND c.internal = false
-          AND c."createdAt" > COALESCE(
-            (SELECT tv."viewedAt" FROM "TicketView" tv
-             WHERE tv."userId" = ${user.id} AND tv."ticketId" = t.id),
-            '1970-01-01'::timestamptz
-          )
-          AND c."authorId" != ${user.id}
-      )
-    `
-  );
-  const unreadCount = Number(result[0]?.count ?? 0);
 
   return (
     <div className="min-h-screen">
@@ -48,11 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="hidden items-center gap-5 sm:flex">
               <Link href="/dashboard" className="relative text-sm font-medium text-gray-600 hover:text-gray-900">
                 Dashboard
-                {unreadCount > 0 && (
-                  <span className="absolute -right-3 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-[10px] font-bold text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
+                <UnreadBadge />
               </Link>
               <Link href="/tickets/new" className="text-sm font-medium text-gray-600 hover:text-gray-900">
                 Nuovo ticket

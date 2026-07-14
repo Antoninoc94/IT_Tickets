@@ -375,6 +375,19 @@ export async function deleteTicket(ticketId: string): Promise<DeleteTicketState>
 }
 
 // ---------------------------------------------------------------------------
+// Mark ticket as viewed (updates TicketView for unread badge)
+// ---------------------------------------------------------------------------
+
+export async function markTicketViewed(ticketId: string) {
+  const user = await getCurrentUser();
+  await prisma.ticketView.upsert({
+    where: { userId_ticketId: { userId: user.id, ticketId } },
+    create: { userId: user.id, ticketId },
+    update: { viewedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Update ticket priority / category (staff only)
 // ---------------------------------------------------------------------------
 

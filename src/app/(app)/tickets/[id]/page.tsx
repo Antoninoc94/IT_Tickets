@@ -18,6 +18,7 @@ import { CloseTicketButton } from "./close-ticket-button";
 import { ReopenTicketButton } from "./reopen-ticket-button";
 import { TicketHistory } from "./ticket-history";
 import { LocalTime } from "@/app/local-time";
+import { ViewTracker } from "./view-tracker";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -57,11 +58,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const [settings, cannedResponses] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
-    prisma.ticketView.upsert({
-      where: { userId_ticketId: { userId: user.id, ticketId: id } },
-      create: { userId: user.id, ticketId: id },
-      update: { viewedAt: new Date() },
-    }),
   ]);
   const sla = computeSla(ticket, settings);
 
@@ -71,6 +67,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <ViewTracker ticketId={id} />
       <div className="card p-6">
         <div className="mb-3 flex items-start justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
