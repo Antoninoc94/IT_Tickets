@@ -6,6 +6,8 @@
 
 ## Gestione ticket
 - **Tag/etichette personalizzabili** — tabella `Tag` (nome, colore), relazione many-to-many con `Ticket`, filtro per tag in dashboard
+- **Creazione ticket da parte degli IT** — valutare se limitare la creazione ai soli USER oppure aggiungere campo "Richiedente effettivo" nel form quando è uno staff ad aprire il ticket per conto di un utente
+- **Filtro per etichetta in dashboard** — dropdown tag nel FilterBar per filtrare i ticket per etichetta
 
 ## Dashboard e report
 - **Grafici nella pagina Report** — ticket per stato, priorità, categoria (grafici a barre/torta)
