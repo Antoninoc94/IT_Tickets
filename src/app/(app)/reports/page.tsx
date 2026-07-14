@@ -4,10 +4,13 @@ import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 import {
   categoryBarClass,
+  categoryChartColor,
   categoryLabels,
   priorityBarClass,
+  priorityChartColor,
   priorityLabels,
   statusBarClass,
+  statusChartColor,
   statusLabels,
 } from "@/lib/ticket-labels";
 import { DistributionBar } from "./distribution-bar";
@@ -165,32 +168,32 @@ export default async function ReportsPage() {
         <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per stato</h2>
           <DonutChart data={[
-            { label: statusLabels.OPEN, value: statusCounts.OPEN, color: "#3b82f6" },
-            { label: statusLabels.IN_PROGRESS, value: statusCounts.IN_PROGRESS, color: "#f59e0b" },
-            { label: statusLabels.WAITING_ON_USER, value: statusCounts.WAITING_ON_USER, color: "#8b5cf6" },
-            { label: statusLabels.RESOLVED, value: statusCounts.RESOLVED, color: "#10b981" },
-            { label: statusLabels.CLOSED, value: statusCounts.CLOSED, color: "#6b7280" },
+            { label: statusLabels.OPEN, value: statusCounts.OPEN, color: statusChartColor.OPEN },
+            { label: statusLabels.IN_PROGRESS, value: statusCounts.IN_PROGRESS, color: statusChartColor.IN_PROGRESS },
+            { label: statusLabels.WAITING_ON_USER, value: statusCounts.WAITING_ON_USER, color: statusChartColor.WAITING_ON_USER },
+            { label: statusLabels.RESOLVED, value: statusCounts.RESOLVED, color: statusChartColor.RESOLVED },
+            { label: statusLabels.CLOSED, value: statusCounts.CLOSED, color: statusChartColor.CLOSED },
           ]} />
         </div>
 
         <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per priorità</h2>
           <DonutChart data={[
-            { label: priorityLabels.URGENT, value: priorityCounts.URGENT, color: "#ef4444" },
-            { label: priorityLabels.HIGH, value: priorityCounts.HIGH, color: "#f59e0b" },
-            { label: priorityLabels.MEDIUM, value: priorityCounts.MEDIUM, color: "#3b82f6" },
-            { label: priorityLabels.LOW, value: priorityCounts.LOW, color: "#10b981" },
+            { label: priorityLabels.URGENT, value: priorityCounts.URGENT, color: priorityChartColor.URGENT },
+            { label: priorityLabels.HIGH, value: priorityCounts.HIGH, color: priorityChartColor.HIGH },
+            { label: priorityLabels.MEDIUM, value: priorityCounts.MEDIUM, color: priorityChartColor.MEDIUM },
+            { label: priorityLabels.LOW, value: priorityCounts.LOW, color: priorityChartColor.LOW },
           ]} />
         </div>
 
         <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per categoria</h2>
           <DonutChart data={[
-            { label: categoryLabels.HARDWARE, value: categoryCounts.HARDWARE, color: "#6366f1" },
-            { label: categoryLabels.SOFTWARE, value: categoryCounts.SOFTWARE, color: "#3b82f6" },
-            { label: categoryLabels.NETWORK, value: categoryCounts.NETWORK, color: "#10b981" },
-            { label: categoryLabels.ACCOUNT, value: categoryCounts.ACCOUNT, color: "#f59e0b" },
-            { label: categoryLabels.OTHER, value: categoryCounts.OTHER, color: "#6b7280" },
+            { label: categoryLabels.HARDWARE, value: categoryCounts.HARDWARE, color: categoryChartColor.HARDWARE },
+            { label: categoryLabels.SOFTWARE, value: categoryCounts.SOFTWARE, color: categoryChartColor.SOFTWARE },
+            { label: categoryLabels.NETWORK, value: categoryCounts.NETWORK, color: categoryChartColor.NETWORK },
+            { label: categoryLabels.ACCOUNT, value: categoryCounts.ACCOUNT, color: categoryChartColor.ACCOUNT },
+            { label: categoryLabels.OTHER, value: categoryCounts.OTHER, color: categoryChartColor.OTHER },
           ]} />
         </div>
       </div>

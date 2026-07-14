@@ -68,3 +68,27 @@ export const categoryBarClass: Record<TicketCategory, string> = {
   ACCOUNT: "bg-pink-500",
   OTHER: "bg-gray-400",
 };
+
+// Hex colors for SVG charts — must match the Tailwind classes above
+export const statusChartColor: Record<TicketStatus, string> = {
+  OPEN: "#facc15",
+  IN_PROGRESS: "#3b82f6",
+  WAITING_ON_USER: "#a855f7",
+  RESOLVED: "#22c55e",
+  CLOSED: "#9ca3af",
+};
+
+export const priorityChartColor: Record<TicketPriority, string> = {
+  LOW: "#9ca3af",
+  MEDIUM: "#3b82f6",
+  HIGH: "#f97316",
+  URGENT: "#ef4444",
+};
+
+export const categoryChartColor: Record<TicketCategory, string> = {
+  HARDWARE: "#6366f1",
+  SOFTWARE: "#14b8a6",
+  NETWORK: "#06b6d4",
+  ACCOUNT: "#ec4899",
+  OTHER: "#9ca3af",
+};
