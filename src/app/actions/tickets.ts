@@ -62,20 +62,33 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     ? (formData.getAll("tagIds") as string[]).filter(Boolean)
     : [];
 
-  const requesterId =
-    user.role !== "USER" && formData.get("requesterId")
-      ? String(formData.get("requesterId"))
-      : user.id;
+  const isFreeText = user.role !== "USER" && formData.get("requesterMode") === "freetext";
+  const requesterFreeText = isFreeText ? String(formData.get("requesterFreeText") ?? "").trim() : null;
 
-  if (requesterId !== user.id) {
-    const requester = await prisma.user.findUnique({ where: { id: requesterId, active: true } });
-    if (!requester) return { error: "Utente richiedente non trovato." };
+  let requesterId: string;
+  let requesterLabel: string | null = null;
+
+  if (isFreeText) {
+    if (!requesterFreeText) return { error: "Inserisci il nome del richiedente." };
+    requesterId = user.id;
+    requesterLabel = requesterFreeText;
+  } else {
+    requesterId =
+      user.role !== "USER" && formData.get("requesterId")
+        ? String(formData.get("requesterId"))
+        : user.id;
+
+    if (requesterId !== user.id) {
+      const requester = await prisma.user.findUnique({ where: { id: requesterId, active: true } });
+      if (!requester) return { error: "Utente richiedente non trovato." };
+    }
   }
 
   const ticket = await prisma.ticket.create({
     data: {
       ...validated.data,
       requesterId,
+      requesterLabel,
       attachments: {
         create: saved.map((f) => ({ ...f, uploadedById: user.id })),
       },

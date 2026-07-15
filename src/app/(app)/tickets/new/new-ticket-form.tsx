@@ -50,6 +50,7 @@ export function NewTicketForm({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [priority, setPriority] = useState("");
+  const [requesterMode, setRequesterMode] = useState<"registered" | "freetext">("registered");
 
   function toggleTag(id: string) {
     setSelectedTags((prev) => {
@@ -92,16 +93,45 @@ export function NewTicketForm({
           </div>
         )}
 
-        {isStaff && allUsers.length > 0 && (
+        {isStaff && (
           <div>
-            <label htmlFor="requesterId" className="field-label">Per conto di</label>
-            <select id="requesterId" name="requesterId" defaultValue={currentUserId} className="field-input">
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.id === currentUserId ? `${u.name} (io)` : u.name}
-                </option>
-              ))}
-            </select>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="field-label mb-0">Per conto di</label>
+              <div className="flex gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRequesterMode("registered")}
+                  className={`rounded px-2 py-0.5 transition ${requesterMode === "registered" ? "bg-[var(--brand)] text-white" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+                >
+                  Registrato
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequesterMode("freetext")}
+                  className={`rounded px-2 py-0.5 transition ${requesterMode === "freetext" ? "bg-[var(--brand)] text-white" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
+                >
+                  Non registrato
+                </button>
+              </div>
+            </div>
+            <input type="hidden" name="requesterMode" value={requesterMode} />
+            {requesterMode === "registered" ? (
+              <select id="requesterId" name="requesterId" defaultValue={currentUserId} className="field-input">
+                {allUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.id === currentUserId ? `${u.name} (io)` : u.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                name="requesterFreeText"
+                placeholder="Nome e Cognome"
+                className="field-input"
+                required={requesterMode === "freetext"}
+              />
+            )}
           </div>
         )}
 

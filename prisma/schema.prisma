@@ -129,8 +129,9 @@ model Ticket {
   priority    TicketPriority @default(MEDIUM)
   category    TicketCategory @default(OTHER)
 
-  requester   User   @relation("TicketRequester", fields: [requesterId], references: [id])
-  requesterId String
+  requester      User    @relation("TicketRequester", fields: [requesterId], references: [id])
+  requesterId    String
+  requesterLabel String?
 
   assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
   assigneeId String?

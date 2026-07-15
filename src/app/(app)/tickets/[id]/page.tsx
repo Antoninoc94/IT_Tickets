@@ -97,7 +97,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         <dl className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4 text-sm">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</dt>
-            <dd className="mt-0.5 text-gray-900">{ticket.requester.name}</dd>
+            <dd className="mt-0.5 text-gray-900">{ticket.requesterLabel ?? ticket.requester.name}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</dt>

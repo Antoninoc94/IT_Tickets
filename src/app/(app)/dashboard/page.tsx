@@ -137,7 +137,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const [requesters, assignees, allTags] = isStaff
     ? await Promise.all([
-        prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.user.findMany({ where: { active: true, role: { in: ["USER", "IT"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
         prisma.user.findMany({
           where: { role: "IT", active: true },
           select: { id: true, name: true },
@@ -187,7 +187,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     return {
       id: ticket.id,
       title: ticket.title,
-      requesterName: ticket.requester.name,
+      requesterName: ticket.requesterLabel ?? ticket.requester.name,
       assigneeName: ticket.assignee?.name ?? null,
       priority: ticket.priority,
       status: ticket.status,
@@ -230,7 +230,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <li key={t.id} className="flex items-center justify-between gap-4 py-2">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <a href={`/tickets/${t.id}`} className="link-brand truncate text-sm">{t.title}</a>
-                  <span className="text-xs text-gray-400">{t.requester.name}</span>
+                  <span className="text-xs text-gray-400">{t.requesterLabel ?? t.requester.name}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {t.tags.map((tag) => (

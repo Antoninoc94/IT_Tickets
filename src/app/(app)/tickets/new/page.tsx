@@ -11,7 +11,7 @@ export default async function NewTicketPage() {
         prisma.tag.findMany({ orderBy: { name: "asc" } }),
         prisma.ticketTemplate.findMany({ orderBy: { name: "asc" } }),
         prisma.user.findMany({
-          where: { active: true },
+          where: { active: true, role: { in: ["USER", "IT"] } },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         }),

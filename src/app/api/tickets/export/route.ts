@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       t.id,
       t.title,
       t.description,
-      t.requester.name,
+      t.requesterLabel ?? t.requester.name,
       t.assignee?.name ?? "",
       categoryLabels[t.category],
       priorityLabels[t.priority],
