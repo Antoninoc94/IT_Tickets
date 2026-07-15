@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendMail, ticketUrl } from "@/lib/mail";
+import { buildDigestHtml } from "@/lib/email-html";
 import { getSettings } from "@/lib/settings";
 
 function cronAuth(request: Request) {
@@ -41,8 +42,18 @@ export async function GET(request: Request) {
 
   const body = `Riepilogo ticket aperti (${openTickets.length} totali):\n\n${lines.join("\n\n")}`;
   const subject = `Digest giornaliero — ${openTickets.length} ticket aperti`;
+  const html = buildDigestHtml(
+    openTickets.map((t) => ({
+      title: t.title,
+      status: t.status,
+      requesterName: t.requester.name,
+      assigneeName: t.assignee?.name ?? null,
+      url: ticketUrl(t.id),
+    })),
+    settings
+  );
 
-  await Promise.all(staff.map((s) => sendMail(s.email, subject, body)));
+  await Promise.all(staff.map((s) => sendMail(s.email, subject, body, html)));
 
   return NextResponse.json({ sent: staff.length, tickets: openTickets.length });
 }

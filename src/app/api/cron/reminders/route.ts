@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendMail, ticketUrl } from "@/lib/mail";
+import { buildEmailHtml } from "@/lib/email-html";
 import { getSettings, renderTemplate } from "@/lib/settings";
 
 function cronAuth(request: Request) {
@@ -45,13 +46,15 @@ export async function GET(request: Request) {
       ticketUrl: ticketUrl(ticket.id),
       days: String(settings.reminderDays),
     };
+    const reminderBody = renderTemplate(
+      `Il ticket "{{ticketTitle}}" è aperto da più di {{days}} giorni senza aggiornamenti.\n\n{{ticketUrl}}`,
+      vars
+    );
     await sendMail(
       ticket.assignee.email,
       `Promemoria: ticket in attesa — ${ticket.title}`,
-      renderTemplate(
-        `Il ticket "{{ticketTitle}}" è aperto da più di {{days}} giorni senza aggiornamenti.\n\n{{ticketUrl}}`,
-        vars
-      )
+      reminderBody,
+      buildEmailHtml(reminderBody, settings, { ctaUrl: ticketUrl(ticket.id), ctaLabel: "Apri ticket →" })
     );
     sent++;
   }

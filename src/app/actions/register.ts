@@ -5,6 +5,8 @@ import argon2 from "argon2";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { buildEmailHtml } from "@/lib/email-html";
+import { getSettings } from "@/lib/settings";
 import { createSession } from "@/lib/session";
 import {
   CODE_TTL_MS,
@@ -43,11 +45,16 @@ async function issueAndSendCode(userId: string, email: string, name: string) {
     },
   });
 
-  await sendMail(
-    email,
-    "Codice di verifica - IT Tickets",
-    `Ciao ${name},\n\nIl tuo codice di verifica è: ${code}\n\nScade tra ${Math.round(CODE_TTL_MS / 60000)} minuti. Se non hai richiesto la registrazione, ignora questa email.`
-  );
+  const settings = await getSettings();
+  const subject = `Codice di verifica — ${settings.appName}`;
+  const text = `Ciao ${name},\n\nIl tuo codice di verifica è: ${code}\n\nScade tra ${Math.round(CODE_TTL_MS / 60000)} minuti.\nSe non hai richiesto la registrazione, ignora questa email.`;
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const html = buildEmailHtml(text, settings, {
+    ctaUrl: `${appUrl}/register/verify`,
+    ctaLabel: "Vai alla pagina di verifica →",
+  });
+
+  await sendMail(email, subject, text, html);
 }
 
 export async function register(_state: RegisterState, formData: FormData): Promise<RegisterState> {

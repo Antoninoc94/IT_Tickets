@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
 import { sendMail, ticketUrl } from "@/lib/mail";
+import { buildEmailHtml } from "@/lib/email-html";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
 import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
@@ -113,7 +114,8 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
   if (settings.emailEnabled) {
     const subject = renderTemplate(settings.newTicketEmailSubject, vars);
     const body = renderTemplate(settings.newTicketEmailBody, vars);
-    await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body)));
+    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
+    await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body, html)));
   }
 
   redirect(`/tickets/${ticket.id}`);
@@ -192,21 +194,17 @@ export async function addComment(
     };
 
     if (settings.emailEnabled) {
+      const commentSubject = renderTemplate(settings.newCommentEmailSubject, vars);
+      const commentBody    = renderTemplate(settings.newCommentEmailBody, vars);
+      const commentHtml    = buildEmailHtml(commentBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Rispondi al ticket →" });
+
       // Notify requester when IT/Admin comments
       if (ticket.requesterId !== user.id) {
-        await sendMail(
-          ticket.requester.email,
-          renderTemplate(settings.newCommentEmailSubject, vars),
-          renderTemplate(settings.newCommentEmailBody, vars)
-        );
+        await sendMail(ticket.requester.email, commentSubject, commentBody, commentHtml);
       }
       // Notify assignee when the requester (USER) comments
       if (user.role === "USER" && ticket.assignee && ticket.assignee.id !== user.id) {
-        await sendMail(
-          ticket.assignee.email,
-          renderTemplate(settings.newCommentEmailSubject, vars),
-          renderTemplate(settings.newCommentEmailBody, vars)
-        );
+        await sendMail(ticket.assignee.email, commentSubject, commentBody, commentHtml);
       }
       // @mention notifications — check each active user's name directly in the text
       const allUsers = await prisma.user.findMany({
@@ -214,15 +212,12 @@ export async function addComment(
         select: { email: true, name: true },
       });
       const mentionedUsers = allUsers.filter((u) => validated.data.body.includes(`@${u.name}`));
-      await Promise.all(
-        mentionedUsers.map((u) =>
-          sendMail(
-            u.email,
-            renderTemplate(settings.mentionEmailSubject, vars),
-            renderTemplate(settings.mentionEmailBody, vars)
-          )
-        )
-      );
+      if (mentionedUsers.length > 0) {
+        const mentionSubject = renderTemplate(settings.mentionEmailSubject, vars);
+        const mentionBody    = renderTemplate(settings.mentionEmailBody, vars);
+        const mentionHtml    = buildEmailHtml(mentionBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
+        await Promise.all(mentionedUsers.map((u) => sendMail(u.email, mentionSubject, mentionBody, mentionHtml)));
+      }
     }
   }
 
@@ -261,10 +256,12 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
       status: statusLabels[status],
       ticketUrl: ticketUrl(ticket.id),
     };
+    const body = renderTemplate(settings.statusChangedEmailBody, vars);
     await sendMail(
       ticket.requester.email,
       renderTemplate(settings.statusChangedEmailSubject, vars),
-      renderTemplate(settings.statusChangedEmailBody, vars)
+      body,
+      buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
     );
   }
 
@@ -308,10 +305,12 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
     const settings = await getSettings();
     if (settings.emailEnabled) {
       const vars = { ticketTitle: updated.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(updated.id) };
+      const body = renderTemplate(settings.statusChangedEmailBody, vars);
       await sendMail(
         updated.requester.email,
         renderTemplate(settings.statusChangedEmailSubject, vars),
-        renderTemplate(settings.statusChangedEmailBody, vars)
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
       );
     }
   }
@@ -385,13 +384,11 @@ export async function reopenTicket(
         status: statusLabels.OPEN,
         ticketUrl: ticketUrl(ticket.id),
       };
+      const body = renderTemplate(settings.statusChangedEmailBody, vars);
+      const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
       await Promise.all(
         itAndAdmins.map((r) =>
-          sendMail(
-            r.email,
-            renderTemplate(settings.statusChangedEmailSubject, vars),
-            renderTemplate(settings.statusChangedEmailBody, vars)
-          )
+          sendMail(r.email, renderTemplate(settings.statusChangedEmailSubject, vars), body, html)
         )
       );
     }
@@ -557,18 +554,22 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
   if (settings.emailEnabled) {
     if (assignee) {
       const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
+      const body = renderTemplate(settings.assignedEmailBody, vars);
       await sendMail(
         assignee.email,
         renderTemplate(settings.assignedEmailSubject, vars),
-        renderTemplate(settings.assignedEmailBody, vars)
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
       );
     }
     if (autoStart) {
       const vars = { ticketTitle: ticket.title, status: statusLabels.IN_PROGRESS, ticketUrl: ticketUrl(ticket.id) };
+      const body = renderTemplate(settings.statusChangedEmailBody, vars);
       await sendMail(
         ticket.requester.email,
         renderTemplate(settings.statusChangedEmailSubject, vars),
-        renderTemplate(settings.statusChangedEmailBody, vars)
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
       );
     }
   }
