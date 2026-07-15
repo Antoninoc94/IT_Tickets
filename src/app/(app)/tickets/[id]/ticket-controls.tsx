@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { assignTicket, updateTicketStatus, updateTicketMeta } from "@/app/actions/tickets";
 import { statusLabels, priorityLabels, categoryLabels } from "@/lib/ticket-labels";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
@@ -24,14 +24,30 @@ export function TicketControls({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  const [curStatus, setCurStatus] = useState(status);
+  const [curPriority, setCurPriority] = useState(priority);
+  const [curCategory, setCurCategory] = useState(category);
+  const [curAssigneeId, setCurAssigneeId] = useState(assigneeId ?? "");
+
+  // Sync controlled state when server re-renders with updated props
+  // (e.g. status auto-advances to IN_PROGRESS when an assignee is set)
+  useEffect(() => { setCurStatus(status); }, [status]);
+  useEffect(() => { setCurPriority(priority); }, [priority]);
+  useEffect(() => { setCurCategory(category); }, [category]);
+  useEffect(() => { setCurAssigneeId(assigneeId ?? ""); }, [assigneeId]);
+
   return (
     <div className="card flex flex-wrap gap-6 p-4">
       <div>
         <label className="field-label">Stato</label>
         <select
-          defaultValue={status}
+          value={curStatus}
           disabled={isPending}
-          onChange={(e) => startTransition(() => updateTicketStatus(ticketId, e.target.value as TicketStatus))}
+          onChange={(e) => {
+            const val = e.target.value as TicketStatus;
+            setCurStatus(val);
+            startTransition(() => updateTicketStatus(ticketId, val));
+          }}
           className="field-input"
         >
           {Object.entries(statusLabels).map(([value, label]) => (
@@ -43,9 +59,13 @@ export function TicketControls({
       <div>
         <label className="field-label">Priorità</label>
         <select
-          defaultValue={priority}
+          value={curPriority}
           disabled={isPending}
-          onChange={(e) => startTransition(() => updateTicketMeta(ticketId, "priority", e.target.value))}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCurPriority(val as TicketPriority);
+            startTransition(() => updateTicketMeta(ticketId, "priority", val));
+          }}
           className="field-input"
         >
           {Object.entries(priorityLabels).map(([value, label]) => (
@@ -57,9 +77,13 @@ export function TicketControls({
       <div>
         <label className="field-label">Categoria</label>
         <select
-          defaultValue={category}
+          value={curCategory}
           disabled={isPending}
-          onChange={(e) => startTransition(() => updateTicketMeta(ticketId, "category", e.target.value))}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCurCategory(val as TicketCategory);
+            startTransition(() => updateTicketMeta(ticketId, "category", val));
+          }}
           className="field-input"
         >
           {Object.entries(categoryLabels).map(([value, label]) => (
@@ -71,9 +95,13 @@ export function TicketControls({
       <div>
         <label className="field-label">Assegnato a</label>
         <select
-          defaultValue={assigneeId ?? ""}
+          value={curAssigneeId}
           disabled={isPending}
-          onChange={(e) => startTransition(() => assignTicket(ticketId, e.target.value))}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCurAssigneeId(val);
+            startTransition(() => assignTicket(ticketId, val));
+          }}
           className="field-input"
         >
           <option value="">Non assegnato</option>
