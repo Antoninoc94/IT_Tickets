@@ -6,15 +6,20 @@ export default async function LoginPage() {
   const settings = await getSettings();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+
+        {/* Logo + title — outside the card */}
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <BrandBadge />
-          <h1 className="text-xl font-semibold text-gray-900">{settings.appName}</h1>
-          <p className="text-sm text-gray-500">Accedi con le tue credenziali aziendali</p>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">{settings.appName}</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Portale di supporto IT</p>
+          </div>
         </div>
 
         <LoginForm />
+
       </div>
     </div>
   );

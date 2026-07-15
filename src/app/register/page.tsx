@@ -3,12 +3,14 @@ import { RegisterForm } from "./register-form";
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <BrandBadge />
-          <h1 className="text-xl font-semibold text-gray-900">Crea il tuo account</h1>
-          <p className="text-center text-sm text-gray-500">Usa la tua email aziendale per registrarti</p>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">Crea il tuo account</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Inserisci i tuoi dati per registrarti</p>
+          </div>
         </div>
 
         <RegisterForm />

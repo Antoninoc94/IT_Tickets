@@ -8,14 +8,16 @@ export default async function ChangePasswordPage() {
   if (!user.mustChangePassword) redirect("/dashboard");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <BrandBadge />
-          <h1 className="text-xl font-semibold text-gray-900">Imposta una nuova password</h1>
-          <p className="text-sm text-gray-500">
-            Ciao {user.name}, per motivi di sicurezza devi cambiare la password provvisoria prima di continuare.
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">Imposta una nuova password</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Ciao {user.name}, per motivi di sicurezza devi cambiare la password provvisoria prima di continuare.
+            </p>
+          </div>
         </div>
 
         <div className="card p-8">
