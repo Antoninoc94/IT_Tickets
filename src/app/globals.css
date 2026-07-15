@@ -104,6 +104,7 @@ body {
   & .bg-gray-100 { background-color: color-mix(in srgb, var(--surface) 40%, var(--background)); }
 
   /* Borders */
+  & .border-amber-200 { border-color: #6b3509; }
   & .border-gray-100 { border-color: var(--border); }
   & .border-gray-200 { border-color: var(--border); }
   & .border-gray-300 { border-color: color-mix(in srgb, var(--border) 150%, transparent); }
@@ -124,6 +125,7 @@ body {
   & .bg-green-100   { background-color: #052e16; }
   & .bg-orange-100  { background-color: #431407; }
   & .bg-red-100     { background-color: #450a0a; }
+  & .bg-amber-50    { background-color: #1e1000; }
   & .bg-amber-100   { background-color: #3d1f02; }
   & .bg-indigo-100  { background-color: #1e1b4b; }
   & .bg-teal-100    { background-color: #042f2e; }
