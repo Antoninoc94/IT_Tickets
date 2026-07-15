@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       ticket.assignee.email,
       `Promemoria: ticket in attesa — ${ticket.title}`,
       reminderBody,
-      buildEmailHtml(reminderBody, settings, { ctaUrl: ticketUrl(ticket.id), ctaLabel: "Apri ticket →" })
+      buildEmailHtml(reminderBody, settings, { ctaUrl: ticketUrl(ticket.id), ctaLabel: "Apri ticket →", linkTitle: ticket.title })
     );
     sent++;
   }

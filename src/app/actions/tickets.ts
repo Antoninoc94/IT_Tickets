@@ -114,7 +114,7 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
   if (settings.emailEnabled) {
     const subject = renderTemplate(settings.newTicketEmailSubject, vars);
     const body = renderTemplate(settings.newTicketEmailBody, vars);
-    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
+    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
     await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body, html)));
   }
 
@@ -196,7 +196,7 @@ export async function addComment(
     if (settings.emailEnabled) {
       const commentSubject = renderTemplate(settings.newCommentEmailSubject, vars);
       const commentBody    = renderTemplate(settings.newCommentEmailBody, vars);
-      const commentHtml    = buildEmailHtml(commentBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Rispondi al ticket →" });
+      const commentHtml    = buildEmailHtml(commentBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Rispondi al ticket →", linkTitle: vars.ticketTitle });
 
       // Notify requester when IT/Admin comments
       if (ticket.requesterId !== user.id) {
@@ -215,7 +215,7 @@ export async function addComment(
       if (mentionedUsers.length > 0) {
         const mentionSubject = renderTemplate(settings.mentionEmailSubject, vars);
         const mentionBody    = renderTemplate(settings.mentionEmailBody, vars);
-        const mentionHtml    = buildEmailHtml(mentionBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
+        const mentionHtml    = buildEmailHtml(mentionBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
         await Promise.all(mentionedUsers.map((u) => sendMail(u.email, mentionSubject, mentionBody, mentionHtml)));
       }
     }
@@ -261,7 +261,7 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
       ticket.requester.email,
       renderTemplate(settings.statusChangedEmailSubject, vars),
       body,
-      buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
+      buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
     );
   }
 
@@ -310,7 +310,7 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
         updated.requester.email,
         renderTemplate(settings.statusChangedEmailSubject, vars),
         body,
-        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
       );
     }
   }
@@ -385,7 +385,7 @@ export async function reopenTicket(
         ticketUrl: ticketUrl(ticket.id),
       };
       const body = renderTemplate(settings.statusChangedEmailBody, vars);
-      const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" });
+      const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
       await Promise.all(
         itAndAdmins.map((r) =>
           sendMail(r.email, renderTemplate(settings.statusChangedEmailSubject, vars), body, html)
@@ -559,7 +559,7 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
         assignee.email,
         renderTemplate(settings.assignedEmailSubject, vars),
         body,
-        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
       );
     }
     if (autoStart) {
@@ -569,7 +569,7 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
         ticket.requester.email,
         renderTemplate(settings.statusChangedEmailSubject, vars),
         body,
-        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →" })
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
       );
     }
   }

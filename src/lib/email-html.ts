@@ -31,22 +31,25 @@ function lineToHtml(line: string, brandColor: string): string {
     .join("");
 }
 
-function textToHtmlBody(text: string, brandColor: string, ctaUrl?: string): string {
+function textToHtmlBody(text: string, brandColor: string, ctaUrl?: string, linkTitle?: string): string {
+  const pStyle = "margin:0 0 16px;line-height:1.6;color:#374151;font-size:15px;";
   return text
     .trim()
     .split(/\n\n+/)
-    .filter((para) => {
-      // Drop bare-URL paragraphs when there's already a CTA button — they're redundant
-      if (ctaUrl && /^https?:\/\/\S+$/.test(para.trim())) return false;
-      return true;
+    .map((para) => {
+      if (ctaUrl && /^https?:\/\/\S+$/.test(para.trim())) {
+        // Replace bare-URL paragraph with a titled hyperlink, or drop it if no title
+        if (linkTitle) {
+          return `<p style="${pStyle}"><a href="${esc(ctaUrl)}" style="color:${brandColor};text-decoration:none;font-weight:600;">${esc(linkTitle)}</a></p>`;
+        }
+        return null;
+      }
+      return `<p style="${pStyle}">${para
+        .split("\n")
+        .map((l) => lineToHtml(l, brandColor))
+        .join("<br>")}</p>`;
     })
-    .map(
-      (para) =>
-        `<p style="margin:0 0 16px;line-height:1.6;color:#374151;font-size:15px;">${para
-          .split("\n")
-          .map((l) => lineToHtml(l, brandColor))
-          .join("<br>")}</p>`
-    )
+    .filter(Boolean)
     .join("");
 }
 
@@ -132,12 +135,13 @@ function emailShell(opts: {
 export function buildEmailHtml(
   text: string,
   settings: EmailSettings,
-  opts?: { ctaUrl?: string; ctaLabel?: string }
+  opts?: { ctaUrl?: string; ctaLabel?: string; linkTitle?: string }
 ): string {
   return emailShell({
-    bodyHtml: textToHtmlBody(text, settings.brandColor, opts?.ctaUrl),
+    bodyHtml: textToHtmlBody(text, settings.brandColor, opts?.ctaUrl, opts?.linkTitle),
     settings,
-    ...opts,
+    ctaUrl: opts?.ctaUrl,
+    ctaLabel: opts?.ctaLabel,
   });
 }
 
