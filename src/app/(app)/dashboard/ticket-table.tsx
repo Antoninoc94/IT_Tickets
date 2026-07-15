@@ -145,8 +145,8 @@ export function TicketTable({
         </div>
       )}
 
-      <div className="table-shell">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+        <table className="w-full min-w-[480px] text-left text-sm">
           <thead className="table-header">
             <tr>
               {isStaff && (
@@ -164,9 +164,9 @@ export function TicketTable({
                   Titolo<SortIcon col="title" />
                 </Link>
               </th>
-              <th className="px-4 py-3">Richiedente</th>
-              <th className="px-4 py-3">Assegnato a</th>
-              <th className="px-4 py-3">
+              <th className="hidden px-4 py-3 sm:table-cell">Richiedente</th>
+              <th className="hidden px-4 py-3 sm:table-cell">Assegnato a</th>
+              <th className="hidden px-4 py-3 sm:table-cell">
                 <Link href={sortHref("priority")} className="inline-flex items-center hover:text-gray-900">
                   Priorità<SortIcon col="priority" />
                 </Link>
@@ -176,7 +176,7 @@ export function TicketTable({
                   Stato<SortIcon col="status" />
                 </Link>
               </th>
-              <th className="px-4 py-3 text-right">
+              <th className="hidden px-4 py-3 text-right sm:table-cell">
                 <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
                   <Link href={sortHref("createdAt")} className="inline-flex items-center hover:text-gray-900">
                     Creato<SortIcon col="createdAt" />
@@ -219,6 +219,13 @@ export function TicketTable({
                         {ticket.title}
                       </Link>
                     </div>
+                    {/* Mobile: priority + requester shown inline */}
+                    <div className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">
+                      <span className={`badge text-[10px] ${priorityBadgeClass[ticket.priority as keyof typeof priorityBadgeClass]}`}>
+                        {priorityLabels[ticket.priority as keyof typeof priorityLabels]}
+                      </span>
+                      <span className="text-xs text-gray-500">{ticket.requesterName}</span>
+                    </div>
                     {ticket.tags.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {ticket.tags.map((tag) => (
@@ -233,9 +240,9 @@ export function TicketTable({
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{ticket.requesterName}</td>
-                  <td className="px-4 py-3 text-gray-600">{ticket.assigneeName ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">{ticket.requesterName}</td>
+                  <td className="hidden px-4 py-3 text-gray-600 sm:table-cell">{ticket.assigneeName ?? "—"}</td>
+                  <td className="hidden px-4 py-3 sm:table-cell">
                     <span className={`badge ${priorityBadgeClass[ticket.priority as keyof typeof priorityBadgeClass]}`}>
                       {priorityLabels[ticket.priority as keyof typeof priorityLabels]}
                     </span>
@@ -253,7 +260,7 @@ export function TicketTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-xs text-gray-400 tabular-nums">
+                  <td className="hidden px-4 py-3 text-right text-xs text-gray-400 tabular-nums sm:table-cell">
                     <LocalTime date={ticket.updatedAtISO} />
                   </td>
                 </tr>

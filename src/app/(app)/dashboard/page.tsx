@@ -220,7 +220,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="page-title">{user.role === "USER" ? "I miei ticket" : "Tutti i ticket"}</h1>
           <p className="page-subtitle">
@@ -229,7 +229,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               : `${total} ticket ${total === 1 ? "totale" : "totali"}`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <a href={exportHref} className="btn-ghost text-sm" download>
             ↓ Esporta CSV
           </a>
