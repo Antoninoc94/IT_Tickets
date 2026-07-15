@@ -84,7 +84,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   };
 
   const itUsers = await prisma.user.findMany({
-    where: { role: { in: ["IT", "ADMIN"] }, active: true },
+    where: { role: "IT", active: true },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
