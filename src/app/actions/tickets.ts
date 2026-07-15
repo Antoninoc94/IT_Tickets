@@ -371,26 +371,27 @@ export async function reopenTicket(
 
   await createEvent(ticketId, user.id, "REOPENED");
 
-  // Notify IT/Admin when a user reopens their ticket
-  if (!isStaff) {
-    const settings = await getSettings();
-    if (settings.emailEnabled) {
+  const settings = await getSettings();
+  if (settings.emailEnabled) {
+    const vars = {
+      ticketTitle: ticket.title,
+      status: statusLabels.OPEN,
+      ticketUrl: ticketUrl(ticket.id),
+    };
+    const body = renderTemplate(settings.statusChangedEmailBody, vars);
+    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
+    const subject = renderTemplate(settings.statusChangedEmailSubject, vars);
+
+    if (isStaff) {
+      // Staff riapre → notifica il richiedente
+      await sendMail(ticket.requester.email, subject, body, html);
+    } else {
+      // Utente riapre → notifica IT/Admin
       const itAndAdmins = await prisma.user.findMany({
         where: { role: "IT", active: true },
         select: { email: true },
       });
-      const vars = {
-        ticketTitle: ticket.title,
-        status: statusLabels.OPEN,
-        ticketUrl: ticketUrl(ticket.id),
-      };
-      const body = renderTemplate(settings.statusChangedEmailBody, vars);
-      const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
-      await Promise.all(
-        itAndAdmins.map((r) =>
-          sendMail(r.email, renderTemplate(settings.statusChangedEmailSubject, vars), body, html)
-        )
-      );
+      await Promise.all(itAndAdmins.map((r) => sendMail(r.email, subject, body, html)));
     }
   }
 
