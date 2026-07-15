@@ -1,4 +1,4 @@
-# SANCO Support — Documentazione tecnica e funzionale
+# IT Ticketing — Documentazione tecnica e funzionale
 
 > Portale di supporto IT interno — gestione ticket, notifiche email, SLA e reportistica.
 
@@ -24,7 +24,7 @@
 
 ## 1. Panoramica del progetto
 
-**SANCO Support** è un'applicazione web per la gestione interna dei ticket di assistenza IT. Permette agli utenti aziendali di aprire richieste di supporto, allo staff IT di gestirle e risolverle, e agli amministratori di configurare l'intero sistema.
+L'applicativo è un'applicazione web per la gestione interna dei ticket di assistenza IT. Permette agli utenti aziendali di aprire richieste di supporto, allo staff IT di gestirle e risolverle, e agli amministratori di configurare l'intero sistema.
 
 L'applicazione è completamente **self-hosted**: gira in un container Docker e non dipende da servizi cloud esterni. Tutti i dati restano all'interno dell'infrastruttura aziendale.
 
@@ -215,7 +215,7 @@ Configurate nel file `.env` nella root del progetto (o direttamente nel `docker-
 | `SMTP_PASS` | — | — | Password SMTP |
 | `SMTP_FROM` | ✅ | — | Indirizzo mittente email (es. `support@azienda.it`) |
 | `APP_URL` | ✅ | `http://localhost:3000` | URL pubblico dell'app (usato nei link email) |
-| `ALLOWED_EMAIL_DOMAIN` | — | — | Se impostato, solo email di questo dominio possono registrarsi (es. `sanco.it`) |
+| `ALLOWED_EMAIL_DOMAIN` | — | — | Se impostato, solo email di questo dominio possono registrarsi (es. `azienda.it`) |
 | `MAX_UPLOAD_SIZE_MB` | — | `25` | Dimensione massima allegati in MB |
 | `UPLOADS_DIR` | — | `/app/uploads` | Percorso directory allegati (nel container) |
 | `POSTGRES_USER` | — | `it_tickets` | Utente PostgreSQL (usato nel compose) |
@@ -227,13 +227,13 @@ Configurate nel file `.env` nella root del progetto (o direttamente nel `docker-
 ```env
 DATABASE_URL=postgresql://it_tickets:CAMBIA_QUESTA_PASSWORD@postgres:5432/it_tickets
 AUTH_SECRET=una-stringa-casuale-di-almeno-32-caratteri
-SMTP_HOST=mail.sanco.it
+SMTP_HOST=mail.azienda.it
 SMTP_PORT=25
-SMTP_FROM=support@sanco.it
-APP_URL=https://support.sanco.it
+SMTP_FROM=support@azienda.it
+APP_URL=https://support.azienda.it
 POSTGRES_PASSWORD=CAMBIA_QUESTA_PASSWORD
 CRON_SECRET=un-altro-token-segreto
-ALLOWED_EMAIL_DOMAIN=sanco.it
+ALLOWED_EMAIL_DOMAIN=azienda.it
 ```
 
 ---
@@ -288,7 +288,7 @@ Dopo il primo avvio, crea manualmente il primo utente admin tramite psql o un cl
 INSERT INTO "User" (id, email, name, "passwordHash", role, "emailVerifiedAt", "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid()::text,
-  'admin@sanco.it',
+  'admin@azienda.it',
   'Amministratore',
   '$2a$12$HASH_GENERATO_SOPRA',
   'ADMIN',
