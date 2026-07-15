@@ -159,9 +159,11 @@ model Setting {
   appName    String  @default("IT Tickets")
   brandColor String  @default("#4f46e5")
   // Filename on disk (under the uploads dir) of the company logo, if uploaded.
-  logoStorageKey    String?
+  logoStorageKey      String?
+  // Separate logo for email headers (e.g. white/light version on dark background).
+  emailLogoStorageKey String?
   // Filename on disk of the browser favicon, if uploaded.
-  faviconStorageKey String?
+  faviconStorageKey   String?
 
   // SLA in hours per priority level; null = no SLA configured.
   slaUrgentHours  Int?

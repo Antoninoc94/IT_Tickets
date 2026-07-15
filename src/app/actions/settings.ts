@@ -120,6 +120,33 @@ export async function removeLogo() {
   revalidatePath("/", "layout");
 }
 
+export async function uploadEmailLogo(_state: LogoState, formData: FormData): Promise<LogoState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") return { error: "Non autorizzato." };
+
+  const file = formData.get("emailLogo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Seleziona un file." };
+  if (file.size > LOGO_MAX_BYTES) return { error: "Il logo supera il limite di 2 MB." };
+  if (!LOGO_TYPES.has(file.type)) return { error: "Formato non valido. Usa PNG, JPG o WebP." };
+
+  const settings = await getSettings();
+  const saved = await saveFile(file);
+  if (settings.emailLogoStorageKey) await deleteFile(settings.emailLogoStorageKey);
+
+  await prisma.setting.update({ where: { id: "app" }, data: { emailLogoStorageKey: saved.storageKey } });
+  return { success: true };
+}
+
+export async function removeEmailLogo() {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+
+  const settings = await getSettings();
+  if (settings.emailLogoStorageKey) await deleteFile(settings.emailLogoStorageKey);
+
+  await prisma.setting.update({ where: { id: "app" }, data: { emailLogoStorageKey: null } });
+}
+
 const FAVICON_MAX_BYTES = 512 * 1024;
 const FAVICON_TYPES = new Set(["image/x-icon", "image/vnd.microsoft.icon", "image/png", "image/svg+xml"]);
 

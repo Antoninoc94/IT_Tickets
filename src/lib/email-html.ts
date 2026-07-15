@@ -4,6 +4,7 @@ export interface EmailSettings {
   appName: string;
   brandColor: string;
   logoStorageKey: string | null;
+  emailLogoStorageKey: string | null;
 }
 
 function baseUrl() {
@@ -30,10 +31,15 @@ function lineToHtml(line: string, brandColor: string): string {
     .join("");
 }
 
-function textToHtmlBody(text: string, brandColor: string): string {
+function textToHtmlBody(text: string, brandColor: string, ctaUrl?: string): string {
   return text
     .trim()
     .split(/\n\n+/)
+    .filter((para) => {
+      // Drop bare-URL paragraphs when there's already a CTA button — they're redundant
+      if (ctaUrl && /^https?:\/\/\S+$/.test(para.trim())) return false;
+      return true;
+    })
     .map(
       (para) =>
         `<p style="margin:0 0 16px;line-height:1.6;color:#374151;font-size:15px;">${para
@@ -51,11 +57,18 @@ function emailShell(opts: {
   ctaLabel?: string;
 }): string {
   const { bodyHtml, settings, ctaUrl, ctaLabel } = opts;
-  const { appName, brandColor, logoStorageKey } = settings;
+  const { appName, brandColor, logoStorageKey, emailLogoStorageKey } = settings;
   const base = baseUrl();
 
-  const headerLogo = logoStorageKey
-    ? `<img src="${base}/api/branding/logo" alt="${esc(appName)}" height="40" style="max-height:40px;display:block;">`
+  const activeLogoKey = emailLogoStorageKey ?? logoStorageKey;
+  const logoSrc = activeLogoKey
+    ? (emailLogoStorageKey
+        ? `${base}/api/branding/email-logo?v=${activeLogoKey}`
+        : `${base}/api/branding/logo?v=${activeLogoKey}`)
+    : null;
+
+  const headerLogo = logoSrc
+    ? `<img src="${logoSrc}" alt="${esc(appName)}" height="40" style="max-height:40px;display:block;">`
     : `<span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">${esc(appName)}</span>`;
 
   const ctaHtml = ctaUrl
@@ -122,7 +135,7 @@ export function buildEmailHtml(
   opts?: { ctaUrl?: string; ctaLabel?: string }
 ): string {
   return emailShell({
-    bodyHtml: textToHtmlBody(text, settings.brandColor),
+    bodyHtml: textToHtmlBody(text, settings.brandColor, opts?.ctaUrl),
     settings,
     ...opts,
   });

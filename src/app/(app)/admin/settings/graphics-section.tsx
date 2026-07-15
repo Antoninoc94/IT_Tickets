@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { removeFavicon, removeLogo, updateGraphics, uploadFavicon, uploadLogo } from "@/app/actions/settings";
+import { removeFavicon, removeLogo, removeEmailLogo, updateGraphics, uploadFavicon, uploadLogo, uploadEmailLogo } from "@/app/actions/settings";
 import type { SettingModel as Setting } from "@/generated/prisma/models/Setting";
 
 function GraphicsFields({ settings }: { settings: Setting }) {
@@ -113,6 +113,61 @@ function LogoUpload({ settings }: { settings: Setting }) {
   );
 }
 
+function EmailLogoUpload({ settings }: { settings: Setting }) {
+  const [state, action, pending] = useActionState(uploadEmailLogo, undefined);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-3 border-t border-gray-100 pt-4">
+      <div>
+        <label className="field-label">Logo email (versione chiara)</label>
+        <p className="text-xs text-gray-400">
+          PNG, JPG o WebP, max 2 MB. Usato nell&apos;header delle email al posto del logo principale — carica una versione
+          bianca/chiara che si legga sul colore brand. Sfondo trasparente consigliato.
+        </p>
+      </div>
+
+      {settings.emailLogoStorageKey && (
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 items-center rounded-md border border-gray-200 px-4" style={{ background: settings.brandColor }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/branding/email-logo?v=${settings.emailLogoStorageKey}`}
+              alt="Logo email attuale"
+              className="h-10 w-auto max-w-[12rem] object-contain"
+            />
+          </div>
+          <form action={removeEmailLogo}>
+            <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800">
+              Rimuovi
+            </button>
+          </form>
+        </div>
+      )}
+
+      <form action={action} className="flex flex-wrap items-center gap-3">
+        <input
+          type="file"
+          name="emailLogo"
+          accept="image/png,image/jpeg,image/webp"
+          required
+          className="field-input max-w-xs file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            setFileError(file && file.size > LOGO_MAX_MB * 1024 * 1024 ? `Il file supera il limite di ${LOGO_MAX_MB} MB.` : null);
+          }}
+        />
+        <button type="submit" disabled={pending || !!fileError} className="btn-secondary">
+          {pending ? "Caricamento..." : settings.emailLogoStorageKey ? "Sostituisci" : "Carica logo email"}
+        </button>
+        {fileError && <p className="text-sm text-red-600">{fileError}</p>}
+        {!fileError && state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {!fileError && state?.success && <p className="text-sm text-green-600">Logo email aggiornato.</p>}
+      </form>
+    </div>
+  );
+}
+
 const FAVICON_MAX_KB = 512;
 
 function FaviconUpload({ settings }: { settings: Setting }) {
@@ -174,6 +229,7 @@ export function GraphicsSection({ settings }: { settings: Setting }) {
     <div className="card space-y-5 p-6">
       <GraphicsFields settings={settings} />
       <LogoUpload settings={settings} />
+      <EmailLogoUpload settings={settings} />
       <FaviconUpload settings={settings} />
     </div>
   );
