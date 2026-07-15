@@ -33,7 +33,7 @@ function formatDuration(ms: number) {
 }
 
 function generatedAtLabel() {
-  return new Date().toLocaleString("it-IT", { dateStyle: "long", timeStyle: "short" });
+  return new Date().toLocaleString("it-IT", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Rome" });
 }
 
 function trendCounts(createdDates: Date[]) {
