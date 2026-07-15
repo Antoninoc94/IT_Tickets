@@ -22,10 +22,16 @@ export async function GET(request: Request) {
   const dateFrom = sp.get("dateFrom") ? new Date(sp.get("dateFrom")!) : undefined;
   const dateTo   = sp.get("dateTo")   ? new Date(sp.get("dateTo")! + "T23:59:59.999Z") : undefined;
 
+  const requesterParam = isStaff && sp.get("requesterId") ? sp.get("requesterId")! : undefined;
+  const isFreeLabel = requesterParam?.startsWith("freetext:");
+  const freeLabelFilter = isFreeLabel ? requesterParam!.slice(9) : undefined;
+  const requesterIdFilter = !isFreeLabel ? requesterParam : undefined;
+
   const tickets = await prisma.ticket.findMany({
     where: {
       ...(!isStaff ? { requesterId: user.id } : {}),
-      ...(isStaff && sp.get("requesterId") ? { requesterId: sp.get("requesterId")! } : {}),
+      ...(isStaff && requesterIdFilter ? { requesterId: requesterIdFilter } : {}),
+      ...(isStaff && freeLabelFilter ? { requesterLabel: freeLabelFilter } : {}),
       ...(status   ? { status }   : {}),
       ...(priority ? { priority } : {}),
       ...(category ? { category } : {}),

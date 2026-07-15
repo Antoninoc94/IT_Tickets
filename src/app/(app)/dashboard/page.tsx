@@ -74,9 +74,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     sortCol === "status" ? { status: sortDir } :
     { updatedAt: sortDir };
 
+  const requesterParam = isStaff && params.requesterId ? params.requesterId : undefined;
+  const isFreeLabel = requesterParam?.startsWith("freetext:");
+  const freeLabelFilter = isFreeLabel ? requesterParam!.slice(9) : undefined;
+  const requesterIdFilter = !isFreeLabel ? requesterParam : undefined;
+
   const where = {
     ...(user.role === "USER" ? { requesterId: user.id } : {}),
-    ...(isStaff && params.requesterId ? { requesterId: params.requesterId } : {}),
+    ...(isStaff && requesterIdFilter ? { requesterId: requesterIdFilter } : {}),
+    ...(isStaff && freeLabelFilter ? { requesterLabel: freeLabelFilter } : {}),
     ...(status ? { status } : {}),
     ...(priority ? { priority } : {}),
     ...(category ? { category } : {}),
@@ -135,7 +141,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const unreadIds = new Set(unreadRows.map((r) => r.id));
 
-  const [requesters, assignees, allTags] = isStaff
+  const [registeredRequesters, assignees, allTags, freeLabelRows] = isStaff
     ? await Promise.all([
         prisma.user.findMany({ where: { active: true, role: { in: ["USER", "IT"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
         prisma.user.findMany({
@@ -144,8 +150,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           orderBy: { name: "asc" },
         }),
         prisma.tag.findMany({ orderBy: { name: "asc" } }),
+        prisma.ticket.findMany({
+          where: { requesterLabel: { not: null } },
+          select: { requesterLabel: true },
+          distinct: ["requesterLabel"],
+          orderBy: { requesterLabel: "asc" },
+        }),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
+
+  const requesters = [
+    ...(registeredRequesters as { id: string; name: string }[]),
+    ...(freeLabelRows as { requesterLabel: string | null }[])
+      .filter((r) => r.requesterLabel)
+      .map((r) => ({ id: `freetext:${r.requesterLabel!}`, name: `${r.requesterLabel!} (non regist.)` })),
+  ];
 
   const settings = await getSettings();
   const totalPages = Math.ceil(total / PAGE_SIZE);
