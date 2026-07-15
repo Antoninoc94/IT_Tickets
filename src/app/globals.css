@@ -150,22 +150,76 @@ body {
 }
 
 @media print {
-  .no-print {
-    display: none !important;
+  /* Force light theme regardless of the active data-theme */
+  html,
+  html[data-theme="dark"],
+  html[data-theme="light"] {
+    --background: #ffffff;
+    --foreground: #111827;
+    --surface:    #ffffff;
+    --border:     #e5e7eb;
+    --muted:      #6b7280;
   }
-  .print-only {
-    display: block !important;
+
+  /* Revert every dark-mode Tailwind override so nothing prints dark */
+  [data-theme="dark"] {
+    & .text-gray-900 { color: #111827 !important; }
+    & .text-gray-800 { color: #1f2937 !important; }
+    & .text-gray-700 { color: #374151 !important; }
+    & .text-gray-600 { color: #4b5563 !important; }
+    & .text-gray-500 { color: #6b7280 !important; }
+    & .text-gray-400 { color: #9ca3af !important; }
+
+    & .bg-white    { background-color: #ffffff !important; }
+    & .bg-gray-50  { background-color: #f9fafb !important; }
+    & .bg-gray-100 { background-color: #f3f4f6 !important; }
+
+    & .bg-amber-50   { background-color: #fffbeb !important; }
+    & .bg-amber-100  { background-color: #fef3c7 !important; }
+    & .bg-yellow-100 { background-color: #fef9c3 !important; }
+    & .bg-blue-100   { background-color: #dbeafe !important; }
+    & .bg-purple-100 { background-color: #f3e8ff !important; }
+    & .bg-green-100  { background-color: #dcfce7 !important; }
+    & .bg-orange-100 { background-color: #ffedd5 !important; }
+    & .bg-red-100    { background-color: #fee2e2 !important; }
+    & .bg-indigo-100 { background-color: #e0e7ff !important; }
+    & .bg-teal-100   { background-color: #ccfbf1 !important; }
+
+    & .text-yellow-800            { color: #854d0e !important; }
+    & .text-blue-700,
+    & .text-blue-800              { color: #1d4ed8 !important; }
+    & .text-purple-700,
+    & .text-purple-800            { color: #7e22ce !important; }
+    & .text-green-800             { color: #166534 !important; }
+    & .text-orange-700            { color: #c2410c !important; }
+    & .text-red-600,
+    & .text-red-700               { color: #dc2626 !important; }
+    & .text-amber-700             { color: #b45309 !important; }
+
+    & .border-gray-100,
+    & .border-gray-200,
+    & .border-gray-300,
+    & .border-amber-200           { border-color: #e5e7eb !important; }
   }
+
+  .no-print   { display: none !important; }
+  .print-only { display: block !important; }
+
   body {
-    background: white;
+    background: white !important;
+    color: #111827 !important;
   }
+
   .card,
   .table-shell {
     break-inside: avoid;
     box-shadow: none !important;
-    border-color: #d1d5db !important;
+    border-color: #e5e7eb !important;
+    background-color: white !important;
   }
-  * {
+
+  /* Keep SVG chart colors for color printers; B&W printers auto-convert */
+  svg {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
