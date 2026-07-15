@@ -107,7 +107,7 @@ Il sistema prevede tre ruoli distinti:
 - Cronologia completa degli eventi (creazione, cambi stato, assegnazioni, risoluzione)
 - Commenti pubblici e note interne per lo staff
 - **Menzioni** nei commenti (`@nome`) con notifica email all'utente menzionato
-- **Allegati** su ticket e commenti (limite configurabile, default 25 MB)
+- **Allegati** su ticket e commenti (limite configurabile, default 25 MB) con anteprima inline: immagini visualizzate direttamente, PDF e testo in iframe, altri file scaricabili. Modale con tasto ESC e click esterno per chiudere
 - Tag colorati assegnabili liberamente
 - Pulsante "Chiudi" per il richiedente, "Riapri" per tutti
 - Pulsante "Elimina" solo per ADMIN
@@ -528,11 +528,6 @@ La ricerca attuale usa `contains` su titolo e descrizione. Migliorabile con:
 - Indice full-text PostgreSQL (`@@` operator, `to_tsvector`)
 - Ricerca anche nel corpo dei commenti
 - Risultati ordinati per rilevanza
-
-#### 📎 Anteprima allegati
-Gli allegati attualmente sono scaricabili ma non visualizzabili inline. Aggiungere:
-- Preview immagini direttamente nel thread del ticket
-- Preview PDF nel browser
 
 #### 🔄 Aggiornamento automatico del ticket
 La pagina dettaglio ticket non si aggiorna automaticamente quando un altro utente aggiunge un commento. Opzioni:
