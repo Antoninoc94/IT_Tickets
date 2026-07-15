@@ -72,7 +72,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const sla = computeSla(ticket, settings);
 
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
-  const canClose = ticket.status !== "CLOSED" && (isStaff || ticket.requesterId === user.id);
+  const canClose = ticket.status !== "CLOSED" && (isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN"));
   const canReopen = ticket.status === "CLOSED" && (isStaff || ticket.requesterId === user.id);
 
   return (

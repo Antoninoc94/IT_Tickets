@@ -287,6 +287,9 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
   if (!isStaff && ticket.requesterId !== user.id) {
     return { error: "Non puoi chiudere questo ticket." };
   }
+  if (!isStaff && ticket.status !== "OPEN") {
+    return { error: "Puoi chiudere il ticket solo quando è in stato Aperto." };
+  }
   if (ticket.status === "CLOSED") {
     return;
   }
