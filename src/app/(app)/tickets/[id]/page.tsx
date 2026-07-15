@@ -139,12 +139,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       )}
 
       {(ticket.parent || ticket.children.length > 0) && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
-          <p className="mb-2 font-medium text-blue-900">Cronologia ticket</p>
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+          <p className="mb-2 font-medium text-blue-900 dark:text-blue-300">Cronologia ticket</p>
           {ticket.parent && (
-            <div className="mb-1 flex items-center gap-2 text-blue-800">
-              <span className="text-xs text-blue-500">Padre</span>
-              <a href={`/tickets/${ticket.parent.id}`} className="font-medium hover:underline">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-xs text-blue-400 dark:text-blue-500">Padre</span>
+              <a href={`/tickets/${ticket.parent.id}`} className="font-medium text-blue-800 hover:underline dark:text-blue-300">
                 {ticket.parent.title}
               </a>
               <span className={`badge text-[10px] ${statusBadgeClass[ticket.parent.status]}`}>
@@ -154,10 +154,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
           {ticket.children.length > 0 && (
             <div className="space-y-1">
-              <span className="text-xs text-blue-500">Ticket correlati</span>
+              <span className="text-xs text-blue-400 dark:text-blue-500">Ticket correlati</span>
               {ticket.children.map((child) => (
-                <div key={child.id} className="flex items-center gap-2 text-blue-800">
-                  <a href={`/tickets/${child.id}`} className="font-medium hover:underline">
+                <div key={child.id} className="flex items-center gap-2">
+                  <a href={`/tickets/${child.id}`} className="font-medium text-blue-800 hover:underline dark:text-blue-300">
                     {child.title}
                   </a>
                   <span className={`badge text-[10px] ${statusBadgeClass[child.status]}`}>
