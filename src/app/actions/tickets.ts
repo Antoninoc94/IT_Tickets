@@ -85,11 +85,15 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     }
   }
 
+  const parentTicketId = formData.get("parentTicketId");
+  const parentId = typeof parentTicketId === "string" && parentTicketId.trim() ? parentTicketId.trim() : null;
+
   const ticket = await prisma.ticket.create({
     data: {
       ...validated.data,
       requesterId,
       requesterLabel,
+      ...(parentId ? { parentTicketId: parentId } : {}),
       attachments: {
         create: saved.map((f) => ({ ...f, uploadedById: user.id })),
       },

@@ -136,6 +136,10 @@ model Ticket {
   assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
   assigneeId String?
 
+  parentTicketId String?
+  parent         Ticket?  @relation("TicketRelation", fields: [parentTicketId], references: [id], onDelete: SetNull)
+  children       Ticket[] @relation("TicketRelation")
+
   comments    Comment[]
   attachments Attachment[]
   events      TicketEvent[]

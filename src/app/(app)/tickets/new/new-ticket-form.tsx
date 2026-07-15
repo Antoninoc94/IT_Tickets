@@ -36,12 +36,14 @@ export function NewTicketForm({
   allUsers,
   currentUserId,
   isStaff,
+  parentTicket,
 }: {
   tags: Tag[];
   templates: Template[];
   allUsers: User[];
   currentUserId: string;
   isStaff: boolean;
+  parentTicket: { id: string; title: string } | null;
 }) {
   const [state, action, pending] = useActionState(createTicket, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -76,7 +78,17 @@ export function NewTicketForm({
         <p className="page-subtitle">Descrivi il problema, il team IT lo prenderà in carico al più presto.</p>
       </div>
 
+      {parentTicket && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+          <span>Collegato a: <strong>{parentTicket.title}</strong></span>
+        </div>
+      )}
+
       <form action={action} className="card space-y-5 p-6">
+        {parentTicket && <input type="hidden" name="parentTicketId" value={parentTicket.id} />}
         {isStaff && templates.length > 0 && (
           <div>
             <label className="field-label">Usa modello (opzionale)</label>

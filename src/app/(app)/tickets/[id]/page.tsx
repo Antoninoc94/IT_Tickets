@@ -32,6 +32,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       requester: true,
       assignee: true,
       tags: true,
+      parent: { select: { id: true, title: true, status: true } },
+      children: { select: { id: true, title: true, status: true }, orderBy: { createdAt: "asc" } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
         include: { author: true, attachments: true },
@@ -73,7 +75,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
   const canClose = ticket.status !== "CLOSED" && (isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN"));
-  const canReopen = ticket.status === "CLOSED" && (isStaff || ticket.requesterId === user.id);
+  const canReopen = ticket.status === "CLOSED" && isStaff;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -136,9 +138,46 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         />
       )}
 
-      {(canClose || canDelete || canReopen) && (
+      {(ticket.parent || ticket.children.length > 0) && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
+          <p className="mb-2 font-medium text-blue-900">Cronologia ticket</p>
+          {ticket.parent && (
+            <div className="mb-1 flex items-center gap-2 text-blue-800">
+              <span className="text-xs text-blue-500">Padre</span>
+              <a href={`/tickets/${ticket.parent.id}`} className="font-medium hover:underline">
+                {ticket.parent.title}
+              </a>
+              <span className={`badge text-[10px] ${statusBadgeClass[ticket.parent.status]}`}>
+                {statusLabels[ticket.parent.status]}
+              </span>
+            </div>
+          )}
+          {ticket.children.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-xs text-blue-500">Ticket correlati</span>
+              {ticket.children.map((child) => (
+                <div key={child.id} className="flex items-center gap-2 text-blue-800">
+                  <a href={`/tickets/${child.id}`} className="font-medium hover:underline">
+                    {child.title}
+                  </a>
+                  <span className={`badge text-[10px] ${statusBadgeClass[child.status]}`}>
+                    {statusLabels[child.status]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(canClose || canDelete || canReopen || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
         <div className="flex items-center justify-end gap-3">
           {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
+          {!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id && (
+            <a href={`/tickets/new?parentId=${ticket.id}`} className="btn-secondary text-sm">
+              Apri ticket correlato
+            </a>
+          )}
           {canClose && <CloseTicketButton ticketId={ticket.id} />}
           {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
         </div>

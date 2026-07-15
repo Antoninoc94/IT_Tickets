@@ -2,21 +2,29 @@ import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { NewTicketForm } from "./new-ticket-form";
 
-export default async function NewTicketPage() {
+export default async function NewTicketPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ parentId?: string }>;
+}) {
   const user = await getCurrentUser();
   const isStaff = user.role !== "USER";
+  const { parentId } = await searchParams;
 
-  const [tags, templates, allUsers] = isStaff
-    ? await Promise.all([
-        prisma.tag.findMany({ orderBy: { name: "asc" } }),
-        prisma.ticketTemplate.findMany({ orderBy: { name: "asc" } }),
-        prisma.user.findMany({
+  const [tags, templates, allUsers, parentTicket] = await Promise.all([
+    isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
+    isStaff ? prisma.ticketTemplate.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
+    isStaff
+      ? prisma.user.findMany({
           where: { active: true, role: { in: ["USER", "IT"] } },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
-        }),
-      ])
-    : [[], [], []];
+        })
+      : Promise.resolve([]),
+    parentId
+      ? prisma.ticket.findUnique({ where: { id: parentId }, select: { id: true, title: true } })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <NewTicketForm
@@ -25,6 +33,7 @@ export default async function NewTicketPage() {
       allUsers={allUsers}
       currentUserId={user.id}
       isStaff={isStaff}
+      parentTicket={parentTicket ?? null}
     />
   );
 }
