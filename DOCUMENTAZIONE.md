@@ -548,11 +548,10 @@ Attualmente lo SLA conta le ore di calendario (24/7). In un contesto aziendale r
 Le email inviate sono in testo semplice. Aggiungere template HTML con brand color e logo per un aspetto più professionale.
 - **Librerie suggerite**: `@react-email/components` o `mjml`
 
-#### 📊 Report avanzati e grafici interattivi
-La pagina Report potrebbe includere:
-- Grafico trend ticket nel tempo (line chart)
-- Filtri per tecnico specifico
-- Export PDF del report
+#### 📊 Grafico trend nel tempo
+La pagina Report mostra già il confronto "ultimi 30 giorni vs 30 giorni precedenti" come numero con indicatore ▲/▼, e supporta già la stampa/export PDF. Quello che manca è:
+- Grafico lineare interattivo con l'andamento giornaliero/settimanale nel tempo
+- Filtro per singolo tecnico nella sezione "Statistiche per tecnico"
 
 #### 🏷️ Categorie personalizzabili
 Le categorie ticket (HARDWARE, SOFTWARE, NETWORK, ACCOUNT, OTHER) sono attualmente fisse (enum Prisma). Renderle configurabili richiede:
