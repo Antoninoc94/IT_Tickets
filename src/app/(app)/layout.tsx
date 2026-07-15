@@ -6,6 +6,7 @@ import { BrandInline } from "@/app/brand";
 import { UnreadBadge } from "./unread-badge";
 import { ThemeToggle } from "@/app/theme-toggle";
 import { NavDropdown } from "./nav-dropdown";
+import { MobileNav } from "./mobile-nav";
 
 const roleBadgeClass: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700",
@@ -30,6 +31,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard" className="flex shrink-0 items-center gap-2 text-base font-semibold text-gray-900">
               <BrandInline />
             </Link>
+
+            <MobileNav isStaff={isStaff} isAdmin={isAdmin} />
 
             <div className="hidden items-center gap-4 sm:flex">
               <Link href="/dashboard" className="relative text-sm font-medium text-gray-600 hover:text-gray-900">

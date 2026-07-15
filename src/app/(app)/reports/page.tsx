@@ -16,6 +16,7 @@ import {
 } from "@/lib/ticket-labels";
 import { DistributionBar } from "./distribution-bar";
 import { DonutChart } from "./donut-chart";
+import { TrendChart } from "./trend-chart";
 import { PrintButton } from "./print-button";
 import { ReportFilterBar } from "./report-filter-bar";
 import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
@@ -185,6 +186,39 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const { last30, prev30 } = trendCounts(tickets.map((t) => t.createdAt));
   const trendDelta = last30 - prev30;
 
+  // Daily ticket counts for the line chart
+  const trendDays = (() => {
+    const dayCounts = new Map<string, number>();
+    for (const t of tickets) {
+      const key = t.createdAt.toLocaleDateString("it-IT", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+    }
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const end = dateTo ?? new Date();
+    const start = dateFrom ?? new Date(end.getTime() - 59 * msPerDay);
+    const days: { date: string; count: number }[] = [];
+    let cursor = new Date(start);
+    cursor.setHours(12, 0, 0, 0);
+    const endNoon = new Date(end);
+    endNoon.setHours(12, 0, 0, 0);
+    while (cursor <= endNoon) {
+      const key = cursor.toLocaleDateString("it-IT", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      days.push({ date: key, count: dayCounts.get(key) ?? 0 });
+      cursor = new Date(cursor.getTime() + msPerDay);
+    }
+    return days;
+  })();
+
   // Active filter label for print header
   const filterLabel = [
     dateFrom && dateTo  ? `dal ${dateFrom.toLocaleDateString("it-IT")} al ${dateTo.toLocaleDateString("it-IT")}` :
@@ -275,6 +309,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <p className="text-xs text-gray-500">Ticket con almeno una risposta IT</p>
           <p className="mt-1 text-[10px] text-gray-400">Su {total} totali</p>
         </div>
+      </div>
+
+      {/* Trend line chart */}
+      <div className="card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-gray-900">
+          Andamento giornaliero — {!hasActiveFilters ? "ultimi 60 giorni" : filterLabel}
+        </h2>
+        <TrendChart days={trendDays} />
       </div>
 
       {/* Donut charts */}
