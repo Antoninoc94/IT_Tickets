@@ -7,12 +7,14 @@ export function UserForm() {
   const [state, action, pending] = useActionState(createUser, undefined);
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <div>
-        <label className="field-label" htmlFor="name">
-          Nome
-        </label>
-        <input id="name" name="name" placeholder="Mario Rossi" required className="field-input" />
+        <label className="field-label" htmlFor="firstName">Nome</label>
+        <input id="firstName" name="firstName" placeholder="Mario" required className="field-input" />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="lastName">Cognome</label>
+        <input id="lastName" name="lastName" placeholder="Rossi" required className="field-input" />
       </div>
       <div>
         <label className="field-label" htmlFor="email">

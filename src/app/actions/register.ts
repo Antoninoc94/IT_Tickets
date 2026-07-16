@@ -28,9 +28,10 @@ function isAllowedEmail(email: string) {
 }
 
 const RegisterSchema = z.object({
-  name: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
-  email: z.email({ error: "Inserisci un'email valida." }),
-  password: z.string().min(8, { error: "La password deve avere almeno 8 caratteri." }),
+  firstName: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
+  lastName:  z.string().trim().min(2, { error: "Il cognome deve avere almeno 2 caratteri." }),
+  email:     z.email({ error: "Inserisci un'email valida." }),
+  password:  z.string().min(8, { error: "La password deve avere almeno 8 caratteri." }),
 });
 
 export type RegisterState = { error?: string } | undefined;
@@ -59,16 +60,18 @@ async function issueAndSendCode(userId: string, email: string, name: string) {
 
 export async function register(_state: RegisterState, formData: FormData): Promise<RegisterState> {
   const validated = RegisterSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
+    firstName: formData.get("firstName"),
+    lastName:  formData.get("lastName"),
+    email:     formData.get("email"),
+    password:  formData.get("password"),
   });
 
   if (!validated.success) {
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
   }
 
-  const { name, email, password } = validated.data;
+  const { firstName, lastName, email, password } = validated.data;
+  const name = `${firstName} ${lastName}`;
   const normalizedEmail = email.toLowerCase();
 
   const domain = allowedDomain();

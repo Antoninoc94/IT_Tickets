@@ -8,10 +8,11 @@ import { getCurrentUser } from "@/lib/dal";
 import type { Role } from "@/generated/prisma/enums";
 
 const NewUserSchema = z.object({
-  name: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
-  email: z.email({ error: "Inserisci un'email valida." }),
-  password: z.string().min(8, { error: "La password deve avere almeno 8 caratteri." }),
-  role: z.enum(["ADMIN", "IT", "USER"]),
+  firstName: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
+  lastName:  z.string().trim().min(2, { error: "Il cognome deve avere almeno 2 caratteri." }),
+  email:     z.email({ error: "Inserisci un'email valida." }),
+  password:  z.string().min(8, { error: "La password deve avere almeno 8 caratteri." }),
+  role:      z.enum(["ADMIN", "IT", "USER"]),
 });
 
 export type NewUserState = { error?: string } | undefined;
@@ -23,10 +24,11 @@ export async function createUser(_state: NewUserState, formData: FormData): Prom
   }
 
   const validated = NewUserSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    role: formData.get("role"),
+    firstName: formData.get("firstName"),
+    lastName:  formData.get("lastName"),
+    email:     formData.get("email"),
+    password:  formData.get("password"),
+    role:      formData.get("role"),
   });
 
   if (!validated.success) {
@@ -39,10 +41,11 @@ export async function createUser(_state: NewUserState, formData: FormData): Prom
     return { error: "Esiste già un utente con questa email." };
   }
 
+  const name = `${validated.data.firstName} ${validated.data.lastName}`;
   const passwordHash = await argon2.hash(validated.data.password);
   await prisma.user.create({
     data: {
-      name: validated.data.name,
+      name,
       email,
       role: validated.data.role,
       passwordHash,

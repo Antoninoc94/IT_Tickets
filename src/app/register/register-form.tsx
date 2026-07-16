@@ -10,11 +10,15 @@ export function RegisterForm() {
   return (
     <div className="card p-8">
       <form action={action} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="field-label">
-            Nome
-          </label>
-          <input id="name" name="name" required className="field-input" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="firstName" className="field-label">Nome</label>
+            <input id="firstName" name="firstName" required autoComplete="given-name" className="field-input" />
+          </div>
+          <div>
+            <label htmlFor="lastName" className="field-label">Cognome</label>
+            <input id="lastName" name="lastName" required autoComplete="family-name" className="field-input" />
+          </div>
         </div>
 
         <div>
