@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { categoryLabels, priorityLabels, statusLabels } from "@/lib/ticket-labels";
+import { priorityLabels, statusLabels } from "@/lib/ticket-labels";
 
 type Option = { id: string; name: string };
 type Tag = { id: string; name: string; color: string };
+type CategoryOption = { id: string; name: string };
 
 function submitOnChange(e: React.ChangeEvent<HTMLSelectElement>) {
   e.currentTarget.form?.requestSubmit();
@@ -15,6 +16,7 @@ export function FilterBar({
   requesters,
   assignees,
   allTags = [],
+  categories = [],
   currentUserId,
   values,
   hasActiveFilters,
@@ -23,6 +25,7 @@ export function FilterBar({
   requesters: Option[];
   assignees: Option[];
   allTags?: Tag[];
+  categories?: CategoryOption[];
   currentUserId: string;
   values: {
     q?: string;
@@ -80,17 +83,17 @@ export function FilterBar({
         </select>
       </div>
 
-      <div>
-        <label className="field-label">Categoria</label>
-        <select name="category" defaultValue={values.category ?? ""} onChange={submitOnChange} className="field-input">
-          <option value="">Tutte</option>
-          {Object.entries(categoryLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {categories.length > 0 && (
+        <div>
+          <label className="field-label">Categoria</label>
+          <select name="category" defaultValue={values.category ?? ""} onChange={submitOnChange} className="field-input">
+            <option value="">Tutte</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {isStaff && (
         <>

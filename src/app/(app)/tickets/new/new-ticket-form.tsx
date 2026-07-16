@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useActionState } from "react";
 import { createTicket } from "@/app/actions/tickets";
-import { categoryLabels, priorityLabels } from "@/lib/ticket-labels";
-import type { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
+import { priorityLabels } from "@/lib/ticket-labels";
+import type { TicketPriority } from "@/generated/prisma/enums";
 
 const MAX_FILE_MB = 25;
 const MAX_FILES = 5;
@@ -20,12 +20,13 @@ function checkFiles(files: FileList | null): string | null {
 }
 
 type Tag = { id: string; name: string; color: string };
+type CategoryOption = { id: string; name: string; color: string };
 type Template = {
   id: string;
   name: string;
   title: string;
   description: string;
-  category: TicketCategory | null;
+  categoryId: string | null;
   priority: TicketPriority | null;
 };
 type User = { id: string; name: string };
@@ -37,6 +38,7 @@ export function NewTicketForm({
   currentUserId,
   isStaff,
   parentTicket,
+  categories,
 }: {
   tags: Tag[];
   templates: Template[];
@@ -44,6 +46,7 @@ export function NewTicketForm({
   currentUserId: string;
   isStaff: boolean;
   parentTicket: { id: string; title: string } | null;
+  categories: CategoryOption[];
 }) {
   const [state, action, pending] = useActionState(createTicket, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -67,7 +70,7 @@ export function NewTicketForm({
     if (!tpl) return;
     if (tpl.title) setTitle(tpl.title);
     if (tpl.description) setDescription(tpl.description);
-    if (tpl.category) setCategory(tpl.category);
+    if (tpl.categoryId) setCategory(tpl.categoryId);
     if (tpl.priority) setPriority(tpl.priority);
   }
 
@@ -176,18 +179,18 @@ export function NewTicketForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="category" className="field-label">Categoria</label>
+            <label htmlFor="categoryId" className="field-label">Categoria</label>
             <select
-              id="category"
-              name="category"
+              id="categoryId"
+              name="categoryId"
               required
               className="field-input"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
               <option value="" disabled>— Seleziona —</option>
-              {Object.entries(categoryLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { pickEnum } from "@/lib/query-params";
-import { statusLabels, priorityLabels, categoryLabels } from "@/lib/ticket-labels";
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import { statusLabels, priorityLabels } from "@/lib/ticket-labels";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   const status   = pickEnum<TicketStatus>(sp.get("status") ?? undefined, Object.keys(statusLabels) as TicketStatus[]);
   const priority = pickEnum<TicketPriority>(sp.get("priority") ?? undefined, Object.keys(priorityLabels) as TicketPriority[]);
-  const category = pickEnum<TicketCategory>(sp.get("category") ?? undefined, ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]);
+  const categoryId = sp.get("category") || undefined;
   const q        = sp.get("q")?.trim();
   const tagId    = sp.get("tagId") || undefined;
 
@@ -32,9 +32,9 @@ export async function GET(request: Request) {
       ...(!isStaff ? { requesterId: user.id } : {}),
       ...(isStaff && requesterIdFilter ? { requesterId: requesterIdFilter } : {}),
       ...(isStaff && freeLabelFilter ? { requesterLabel: freeLabelFilter } : {}),
-      ...(status   ? { status }   : {}),
-      ...(priority ? { priority } : {}),
-      ...(category ? { category } : {}),
+      ...(status     ? { status }     : {}),
+      ...(priority   ? { priority }   : {}),
+      ...(categoryId ? { categoryId } : {}),
       ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
       ...(tagId ? { tags: { some: { id: tagId } } } : {}),
       ...((dateFrom || dateTo) ? {
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         ],
       } : {}),
     },
-    include: { requester: true, assignee: true, tags: true },
+    include: { requester: true, assignee: true, tags: true, category: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       t.description,
       t.requesterLabel ?? t.requester.name,
       t.assignee?.name ?? "",
-      categoryLabels[t.category],
+      t.category.name,
       priorityLabels[t.priority],
       statusLabels[t.status],
       t.tags.map((tag) => tag.name).join("; "),

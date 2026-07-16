@@ -2,19 +2,27 @@
 
 import { useActionState, useTransition } from "react";
 import { createTemplate, deleteTemplate, type TemplateState } from "@/app/actions/templates";
-import { categoryLabels, priorityLabels } from "@/lib/ticket-labels";
-import type { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
+import { priorityLabels } from "@/lib/ticket-labels";
+import type { TicketPriority } from "@/generated/prisma/enums";
 
+type CategoryOption = { id: string; name: string };
 type Template = {
   id: string;
   name: string;
   title: string;
   description: string;
-  category: TicketCategory | null;
+  categoryId: string | null;
+  category: { id: string; name: string } | null;
   priority: TicketPriority | null;
 };
 
-export function TemplatesManager({ templates }: { templates: Template[] }) {
+export function TemplatesManager({
+  templates,
+  categories,
+}: {
+  templates: Template[];
+  categories: CategoryOption[];
+}) {
   const [state, formAction, pending] = useActionState<TemplateState, FormData>(createTemplate, undefined);
   const [isDeleting, startDelete] = useTransition();
 
@@ -45,10 +53,10 @@ export function TemplatesManager({ templates }: { templates: Template[] }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label">Categoria</label>
-              <select name="category" defaultValue="" className="field-input">
+              <select name="categoryId" defaultValue="" className="field-input">
                 <option value="">— Nessuna —</option>
-                {Object.entries(categoryLabels).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -92,7 +100,7 @@ export function TemplatesManager({ templates }: { templates: Template[] }) {
                   <div className="flex flex-wrap gap-2 pt-0.5">
                     {tpl.category && (
                       <span className="badge bg-gray-100 text-gray-600">
-                        {categoryLabels[tpl.category]}
+                        {tpl.category.name}
                       </span>
                     )}
                     {tpl.priority && (

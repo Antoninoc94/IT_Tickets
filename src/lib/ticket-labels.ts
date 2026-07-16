@@ -1,4 +1,4 @@
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 export const statusLabels: Record<TicketStatus, string> = {
   OPEN: "Aperto",
@@ -13,14 +13,6 @@ export const priorityLabels: Record<TicketPriority, string> = {
   MEDIUM: "Media",
   HIGH: "Alta",
   URGENT: "Urgente",
-};
-
-export const categoryLabels: Record<TicketCategory, string> = {
-  HARDWARE: "Hardware",
-  SOFTWARE: "Software",
-  NETWORK: "Rete",
-  ACCOUNT: "Account",
-  OTHER: "Altro",
 };
 
 export const statusOrder: TicketStatus[] = [
@@ -61,14 +53,6 @@ export const priorityBarClass: Record<TicketPriority, string> = {
   URGENT: "bg-red-500",
 };
 
-export const categoryBarClass: Record<TicketCategory, string> = {
-  HARDWARE: "bg-indigo-500",
-  SOFTWARE: "bg-teal-500",
-  NETWORK: "bg-cyan-500",
-  ACCOUNT: "bg-pink-500",
-  OTHER: "bg-gray-400",
-};
-
 // Hex colors for SVG charts — must match the Tailwind classes above
 export const statusChartColor: Record<TicketStatus, string> = {
   OPEN: "#facc15",
@@ -85,10 +69,3 @@ export const priorityChartColor: Record<TicketPriority, string> = {
   URGENT: "#ef4444",
 };
 
-export const categoryChartColor: Record<TicketCategory, string> = {
-  HARDWARE: "#6366f1",
-  SOFTWARE: "#14b8a6",
-  NETWORK: "#06b6d4",
-  ACCOUNT: "#ec4899",
-  OTHER: "#9ca3af",
-};

@@ -59,8 +59,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <NavDropdown
                   label="Admin"
                   items={[
-                    { href: "/admin/users",           label: "Utenti" },
-                    { href: "/admin/settings",        label: "Impostazioni" },
+                    { href: "/admin/users",            label: "Utenti" },
+                    { href: "/admin/categories",       label: "Categorie" },
+                    { href: "/admin/settings",         label: "Impostazioni" },
                     { href: "/admin/canned-responses", label: "Risposte rapide" },
                   ]}
                 />

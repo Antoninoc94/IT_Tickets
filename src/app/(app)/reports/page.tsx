@@ -4,9 +4,6 @@ import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 import { pickEnum } from "@/lib/query-params";
 import {
-  categoryBarClass,
-  categoryChartColor,
-  categoryLabels,
   priorityBarClass,
   priorityChartColor,
   priorityLabels,
@@ -19,7 +16,7 @@ import { DonutChart } from "./donut-chart";
 import { TrendChart } from "./trend-chart";
 import { PrintButton } from "./print-button";
 import { ReportFilterBar } from "./report-filter-bar";
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 function countBy<T extends string>(items: T[], keys: readonly T[]) {
   const counts = Object.fromEntries(keys.map((k) => [k, 0])) as Record<T, number>;
@@ -63,7 +60,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const settings = await getSettings();
   const params = await searchParams;
 
-  const category  = pickEnum<TicketCategory>(params.category, Object.keys(categoryLabels) as TicketCategory[]);
+  const categoryId = params.category || undefined;
   const priority  = pickEnum<TicketPriority>(params.priority, Object.keys(priorityLabels) as TicketPriority[]);
   const dateFrom  = params.dateFrom ? new Date(params.dateFrom) : undefined;
   const dateTo    = params.dateTo   ? new Date(params.dateTo + "T23:59:59.999Z") : undefined;
@@ -73,7 +70,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   // Base where clause shared by both queries
   const where = {
-    ...(category   ? { category }   : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(priority   ? { priority }   : {}),
     ...(assigneeId ? { assigneeId } : {}),
     ...((dateFrom || dateTo) ? {
@@ -84,11 +81,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     } : {}),
   };
 
-  const itUsers = await prisma.user.findMany({
-    where: { role: "IT", active: true },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const [itUsers, dbCategories] = await Promise.all([
+    prisma.user.findMany({ where: { role: "IT", active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ orderBy: { position: "asc" }, select: { id: true, name: true, color: true } }),
+  ]);
 
   const [tickets, ticketsWithFirstResponse] = await Promise.all([
     prisma.ticket.findMany({
@@ -96,7 +92,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       select: {
         status: true,
         priority: true,
-        category: true,
+        categoryId: true,
         createdAt: true,
         resolvedAt: true,
         closedAt: true,
@@ -123,7 +119,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   const statusCounts   = countBy(tickets.map((t) => t.status),   Object.keys(statusLabels)   as TicketStatus[]);
   const priorityCounts = countBy(tickets.map((t) => t.priority), Object.keys(priorityLabels) as TicketPriority[]);
-  const categoryCounts = countBy(tickets.map((t) => t.category), Object.keys(categoryLabels) as TicketCategory[]);
+  const categoryCountsMap = new Map<string, number>();
+  for (const t of tickets) categoryCountsMap.set(t.categoryId, (categoryCountsMap.get(t.categoryId) ?? 0) + 1);
 
   const requesterCounts = new Map<string, number>();
   for (const t of tickets) requesterCounts.set(t.requester.name, (requesterCounts.get(t.requester.name) ?? 0) + 1);
@@ -224,7 +221,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     dateFrom && dateTo  ? `dal ${dateFrom.toLocaleDateString("it-IT")} al ${dateTo.toLocaleDateString("it-IT")}` :
     dateFrom            ? `dal ${dateFrom.toLocaleDateString("it-IT")}` :
     dateTo              ? `fino al ${dateTo.toLocaleDateString("it-IT")}` : "",
-    category ? categoryLabels[category] : "",
+    categoryId ? (dbCategories.find((c) => c.id === categoryId)?.name ?? "") : "",
     priority ? priorityLabels[priority] : "",
     assigneeId ? (itUsers.find((u) => u.id === assigneeId)?.name ?? "") : "",
   ].filter(Boolean).join(" · ");
@@ -254,6 +251,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <ReportFilterBar
         values={params}
         assignees={itUsers}
+        categories={dbCategories}
         hasActiveFilters={hasActiveFilters}
       />
 
@@ -344,13 +342,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
         <div className="card space-y-4 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Per categoria</h2>
-          <DonutChart data={[
-            { label: categoryLabels.HARDWARE, value: categoryCounts.HARDWARE, color: categoryChartColor.HARDWARE },
-            { label: categoryLabels.SOFTWARE, value: categoryCounts.SOFTWARE, color: categoryChartColor.SOFTWARE },
-            { label: categoryLabels.NETWORK,  value: categoryCounts.NETWORK,  color: categoryChartColor.NETWORK },
-            { label: categoryLabels.ACCOUNT,  value: categoryCounts.ACCOUNT,  color: categoryChartColor.ACCOUNT },
-            { label: categoryLabels.OTHER,    value: categoryCounts.OTHER,    color: categoryChartColor.OTHER },
-          ]} />
+          <DonutChart data={dbCategories.map((c) => ({
+            label: c.name,
+            value: categoryCountsMap.get(c.id) ?? 0,
+            color: c.color,
+          }))} />
         </div>
       </div>
 
@@ -393,13 +389,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
         <div className="card space-y-3 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Distribuzione per categoria</h2>
-          {(Object.keys(categoryLabels) as TicketCategory[]).map((c) => (
+          {dbCategories.map((c) => (
             <DistributionBar
-              key={c}
-              label={categoryLabels[c]}
-              count={categoryCounts[c]}
+              key={c.id}
+              label={c.name}
+              count={categoryCountsMap.get(c.id) ?? 0}
               total={total}
-              colorClass={categoryBarClass[c]}
+              color={c.color}
             />
           ))}
         </div>

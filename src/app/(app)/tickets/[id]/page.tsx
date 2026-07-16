@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import {
-  categoryLabels,
   priorityBadgeClass,
   priorityLabels,
   statusBadgeClass,
@@ -31,6 +30,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     include: {
       requester: true,
       assignee: true,
+      category: true,
       tags: true,
       parent: { select: { id: true, title: true, status: true } },
       children: { select: { id: true, title: true, status: true }, orderBy: { createdAt: "asc" } },
@@ -66,10 +66,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     ...(ticket.assignee ? [ticket.assignee.name] : []),
   ].filter((v, i, a) => a.indexOf(v) === i);
 
-  const [settings, cannedResponses, allTags] = await Promise.all([
+  const [settings, cannedResponses, allTags, categories] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
+    isStaff ? prisma.category.findMany({ where: { enabled: true }, orderBy: { position: "asc" }, select: { id: true, name: true } }) : Promise.resolve([]),
   ]);
   const sla = computeSla(ticket, settings);
 
@@ -103,7 +104,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</dt>
-            <dd className="mt-0.5 text-gray-900">{categoryLabels[ticket.category]}</dd>
+            <dd className="mt-0.5 text-gray-900">{ticket.category.name}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</dt>
@@ -132,7 +133,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           ticketId={ticket.id}
           status={ticket.status}
           priority={ticket.priority}
-          category={ticket.category}
+          categoryId={ticket.categoryId}
+          categories={categories}
           assigneeId={ticket.assigneeId}
           itUsers={itUsers}
         />

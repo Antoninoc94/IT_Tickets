@@ -2,23 +2,26 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { assignTicket, updateTicketStatus, updateTicketMeta } from "@/app/actions/tickets";
-import { statusLabels, priorityLabels, categoryLabels } from "@/lib/ticket-labels";
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import { statusLabels, priorityLabels } from "@/lib/ticket-labels";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 type AssigneeOption = { id: string; name: string };
+type CategoryOption = { id: string; name: string };
 
 export function TicketControls({
   ticketId,
   status,
   priority,
-  category,
+  categoryId,
+  categories,
   assigneeId,
   itUsers,
 }: {
   ticketId: string;
   status: TicketStatus;
   priority: TicketPriority;
-  category: TicketCategory;
+  categoryId: string;
+  categories: CategoryOption[];
   assigneeId: string | null;
   itUsers: AssigneeOption[];
 }) {
@@ -26,14 +29,12 @@ export function TicketControls({
 
   const [curStatus, setCurStatus] = useState(status);
   const [curPriority, setCurPriority] = useState(priority);
-  const [curCategory, setCurCategory] = useState(category);
+  const [curCategoryId, setCurCategoryId] = useState(categoryId);
   const [curAssigneeId, setCurAssigneeId] = useState(assigneeId ?? "");
 
-  // Sync controlled state when server re-renders with updated props
-  // (e.g. status auto-advances to IN_PROGRESS when an assignee is set)
   useEffect(() => { setCurStatus(status); }, [status]);
   useEffect(() => { setCurPriority(priority); }, [priority]);
-  useEffect(() => { setCurCategory(category); }, [category]);
+  useEffect(() => { setCurCategoryId(categoryId); }, [categoryId]);
   useEffect(() => { setCurAssigneeId(assigneeId ?? ""); }, [assigneeId]);
 
   return (
@@ -82,17 +83,17 @@ export function TicketControls({
       <div>
         <label className="field-label">Categoria</label>
         <select
-          value={curCategory}
+          value={curCategoryId}
           disabled={isPending}
           onChange={(e) => {
             const val = e.target.value;
-            setCurCategory(val as TicketCategory);
+            setCurCategoryId(val);
             startTransition(() => updateTicketMeta(ticketId, "category", val));
           }}
           className="field-input"
         >
-          {Object.entries(categoryLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
       </div>

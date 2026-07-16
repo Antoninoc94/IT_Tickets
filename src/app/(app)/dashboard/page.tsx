@@ -12,7 +12,7 @@ import { FilterBar } from "./filter-bar";
 import { TicketTable, type TicketRow } from "./ticket-table";
 import { getSettings } from "@/lib/settings";
 import { computeSla, formatRemaining } from "@/lib/sla";
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 const PAGE_SIZE = 25;
 
@@ -51,7 +51,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const status = pickEnum<TicketStatus>(params.status, Object.keys(statusLabels) as TicketStatus[]);
   const priority = pickEnum<TicketPriority>(params.priority, Object.keys(priorityLabels) as TicketPriority[]);
-  const category = pickEnum<TicketCategory>(params.category, ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]);
+  const categoryId = params.category || undefined;
   const q = params.q?.trim();
   const assigneeId = isStaff && params.assigneeId
     ? (params.assigneeId === "me" ? user.id : params.assigneeId)
@@ -85,7 +85,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     ...(isStaff && freeLabelFilter ? { requesterLabel: freeLabelFilter } : {}),
     ...(status ? { status } : {}),
     ...(priority ? { priority } : {}),
-    ...(category ? { category } : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(assigneeId ? { assigneeId: assigneeId === "unassigned" ? null : assigneeId } : {}),
     ...(tagId ? { tags: { some: { id: tagId } } } : {}),
     ...((dateFrom || dateTo) ? {
@@ -141,7 +141,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const unreadIds = new Set(unreadRows.map((r) => r.id));
 
-  const [registeredRequesters, assignees, allTags, freeLabelRows] = isStaff
+  const [registeredRequesters, assignees, allTags, freeLabelRows, allCategories] = isStaff
     ? await Promise.all([
         prisma.user.findMany({ where: { active: true, role: { in: ["USER", "IT"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
         prisma.user.findMany({
@@ -156,8 +156,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           distinct: ["requesterLabel"],
           orderBy: { requesterLabel: "asc" },
         }),
+        prisma.category.findMany({ orderBy: { position: "asc" }, select: { id: true, name: true } }),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
 
   const requesters = [
     ...(registeredRequesters as { id: string; name: string }[]),
@@ -274,6 +275,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         requesters={requesters}
         assignees={assignees}
         allTags={allTags}
+        categories={allCategories as { id: string; name: string }[]}
         currentUserId={user.id}
         values={params}
         hasActiveFilters={hasActiveFilters}

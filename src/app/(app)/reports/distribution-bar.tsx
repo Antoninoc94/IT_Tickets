@@ -3,11 +3,13 @@ export function DistributionBar({
   count,
   total,
   colorClass,
+  color,
 }: {
   label: string;
   count: number;
   total: number;
-  colorClass: string;
+  colorClass?: string;
+  color?: string;
 }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
@@ -20,7 +22,10 @@ export function DistributionBar({
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-        <div className={`h-2 rounded-full ${colorClass}`} style={{ width: `${pct}%` }} />
+        <div
+          className={`h-2 rounded-full ${colorClass ?? ""}`}
+          style={{ width: `${pct}%`, ...(color ? { backgroundColor: color } : {}) }}
+        />
       </div>
     </div>
   );

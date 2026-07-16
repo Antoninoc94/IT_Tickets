@@ -11,9 +11,11 @@ export default async function NewTicketPage({
   const isStaff = user.role !== "USER";
   const { parentId } = await searchParams;
 
-  const [tags, templates, allUsers, parentTicket] = await Promise.all([
+  const [tags, templates, allUsers, parentTicket, categories] = await Promise.all([
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
-    isStaff ? prisma.ticketTemplate.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
+    isStaff
+      ? prisma.ticketTemplate.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, title: true, description: true, categoryId: true, priority: true } })
+      : Promise.resolve([]),
     isStaff
       ? prisma.user.findMany({
           where: { active: true, role: { in: ["USER", "IT"] } },
@@ -24,6 +26,7 @@ export default async function NewTicketPage({
     parentId
       ? prisma.ticket.findUnique({ where: { id: parentId }, select: { id: true, title: true } })
       : Promise.resolve(null),
+    prisma.category.findMany({ where: { enabled: true }, orderBy: { position: "asc" }, select: { id: true, name: true, color: true } }),
   ]);
 
   return (
@@ -34,6 +37,7 @@ export default async function NewTicketPage({
       currentUserId={user.id}
       isStaff={isStaff}
       parentTicket={parentTicket ?? null}
+      categories={categories}
     />
   );
 }

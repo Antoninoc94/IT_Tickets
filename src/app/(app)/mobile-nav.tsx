@@ -37,6 +37,7 @@ export function MobileNav({
   const adminItems: NavItem[] = isAdmin
     ? [
         { href: "/admin/users",            label: "Utenti" },
+        { href: "/admin/categories",       label: "Categorie" },
         { href: "/admin/settings",         label: "Impostazioni" },
         { href: "/admin/canned-responses", label: "Risposte rapide" },
       ]

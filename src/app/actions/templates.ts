@@ -4,13 +4,13 @@ import * as z from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
-import type { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
+import type { TicketPriority } from "@/generated/prisma/enums";
 
 const TemplateSchema = z.object({
   name: z.string().trim().min(1, { error: "Il nome è obbligatorio." }),
   title: z.string().trim(),
   description: z.string().trim(),
-  category: z.enum(["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]).optional(),
+  categoryId: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 });
 
@@ -27,7 +27,7 @@ export async function createTemplate(
     name: formData.get("name"),
     title: formData.get("title") ?? "",
     description: formData.get("description") ?? "",
-    category: formData.get("category") || undefined,
+    categoryId: formData.get("categoryId") || undefined,
     priority: formData.get("priority") || undefined,
   });
   if (!validated.success) return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
@@ -37,7 +37,7 @@ export async function createTemplate(
       name: validated.data.name,
       title: validated.data.title,
       description: validated.data.description,
-      category: validated.data.category as TicketCategory | undefined,
+      categoryId: validated.data.categoryId || null,
       priority: validated.data.priority as TicketPriority | undefined,
     },
   });

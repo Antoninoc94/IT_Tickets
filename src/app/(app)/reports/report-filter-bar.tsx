@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { categoryLabels, priorityLabels } from "@/lib/ticket-labels";
+import { priorityLabels } from "@/lib/ticket-labels";
 
 type Assignee = { id: string; name: string };
+type CategoryOption = { id: string; name: string };
 
 export function ReportFilterBar({
   values,
   assignees,
+  categories = [],
   hasActiveFilters,
 }: {
   values: {
@@ -18,6 +20,7 @@ export function ReportFilterBar({
     assigneeId?: string;
   };
   assignees: Assignee[];
+  categories?: CategoryOption[];
   hasActiveFilters: boolean;
 }) {
   return (
@@ -42,20 +45,22 @@ export function ReportFilterBar({
         />
       </div>
 
-      <div>
-        <label className="field-label">Categoria</label>
-        <select
-          name="category"
-          defaultValue={values.category ?? ""}
-          className="field-input"
-          onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        >
-          <option value="">Tutte</option>
-          {Object.entries(categoryLabels).map(([v, label]) => (
-            <option key={v} value={v}>{label}</option>
-          ))}
-        </select>
-      </div>
+      {categories.length > 0 && (
+        <div>
+          <label className="field-label">Categoria</label>
+          <select
+            name="category"
+            defaultValue={values.category ?? ""}
+            className="field-input"
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+          >
+            <option value="">Tutte</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="field-label">Priorità</label>

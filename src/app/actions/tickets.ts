@@ -10,7 +10,7 @@ import { buildEmailHtml } from "@/lib/email-html";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
 import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
-import type { TicketCategory, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,7 +34,7 @@ async function createEvent(
 const NewTicketSchema = z.object({
   title: z.string().trim().min(3, { error: "Il titolo deve avere almeno 3 caratteri." }),
   description: z.string().trim().min(10, { error: "Descrivi il problema con almeno 10 caratteri." }),
-  category: z.enum(["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"]),
+  categoryId: z.string().min(1, { error: "Seleziona una categoria." }),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
 });
 
@@ -46,7 +46,7 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
   const validated = NewTicketSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
-    category: formData.get("category"),
+    categoryId: formData.get("categoryId"),
     priority: formData.get("priority"),
   });
 
@@ -487,11 +487,13 @@ export async function updateTicketMeta(
     await prisma.ticket.update({ where: { id: ticketId }, data: { priority: value as TicketPriority } });
     if (current) await createEvent(ticketId, user.id, "PRIORITY_CHANGED", { from: current.priority, to: value });
   } else {
-    const valid: TicketCategory[] = ["HARDWARE", "SOFTWARE", "NETWORK", "ACCOUNT", "OTHER"];
-    if (!valid.includes(value as TicketCategory)) throw new Error("Valore non valido.");
-    const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { category: true } });
-    await prisma.ticket.update({ where: { id: ticketId }, data: { category: value as TicketCategory } });
-    if (current) await createEvent(ticketId, user.id, "CATEGORY_CHANGED", { from: current.category, to: value });
+    const [current, newCat] = await Promise.all([
+      prisma.ticket.findUnique({ where: { id: ticketId }, select: { category: { select: { name: true } } } }),
+      prisma.category.findUnique({ where: { id: value }, select: { name: true } }),
+    ]);
+    if (!newCat) throw new Error("Categoria non trovata.");
+    await prisma.ticket.update({ where: { id: ticketId }, data: { categoryId: value } });
+    if (current?.category) await createEvent(ticketId, user.id, "CATEGORY_CHANGED", { from: current.category.name, to: newCat.name });
   }
 
   revalidatePath(`/tickets/${ticketId}`);
