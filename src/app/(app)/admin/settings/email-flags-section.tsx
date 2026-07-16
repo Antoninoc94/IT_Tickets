@@ -7,6 +7,7 @@ type Settings = {
   emailEnabled: boolean;
   digestEnabled: boolean;
   reminderDays: number | null;
+  autoCloseDays: number | null;
 };
 
 export function EmailFlagsSection({ settings }: { settings: Settings }) {
@@ -41,6 +42,22 @@ export function EmailFlagsSection({ settings }: { settings: Settings }) {
             max="365"
             defaultValue={settings.reminderDays ?? ""}
             placeholder="es. 3"
+            className="field-input w-32"
+          />
+        </label>
+      </div>
+
+      <div className="border-t border-gray-100 pt-4">
+        <label className="block">
+          <p className="text-sm font-medium text-gray-900">Chiusura automatica ticket Risolti (giorni)</p>
+          <p className="mb-2 text-xs text-gray-500">I ticket in stato <strong>Risolto</strong> vengono chiusi automaticamente se non ci sono aggiornamenti dopo N giorni. Lascia vuoto per disabilitare.</p>
+          <input
+            type="number"
+            name="autoCloseDays"
+            min="1"
+            max="365"
+            defaultValue={settings.autoCloseDays ?? ""}
+            placeholder="es. 7"
             className="field-input w-32"
           />
         </label>

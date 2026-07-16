@@ -47,7 +47,9 @@ function eventDescription(e: EventItem): string {
     case "UNASSIGNED":
       return "Assegnazione rimossa";
     case "CLOSED":
-      return "Ticket chiuso";
+      return meta.auto
+        ? `Ticket chiuso automaticamente dopo ${meta.days} giorni senza aggiornamenti`
+        : "Ticket chiuso";
     case "REOPENED":
       return "Ticket riaperto";
     case "PRIORITY_CHANGED":

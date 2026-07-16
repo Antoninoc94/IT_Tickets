@@ -234,11 +234,16 @@ export async function updateEmailFlags(_state: EmailFlagsState, formData: FormDa
   if (reminderDays !== null && (isNaN(reminderDays) || reminderDays < 1 || reminderDays > 365)) {
     return { error: "Giorni promemoria: inserisci un valore tra 1 e 365, oppure lascia vuoto per disabilitare." };
   }
+  const rawAutoClose = formData.get("autoCloseDays");
+  const autoCloseDays = rawAutoClose === "" || rawAutoClose === null ? null : parseInt(rawAutoClose as string);
+  if (autoCloseDays !== null && (isNaN(autoCloseDays) || autoCloseDays < 1 || autoCloseDays > 365)) {
+    return { error: "Giorni chiusura automatica: inserisci un valore tra 1 e 365, oppure lascia vuoto per disabilitare." };
+  }
 
   await prisma.setting.upsert({
     where: { id: "app" },
-    update: { emailEnabled, digestEnabled, reminderDays },
-    create: { id: "app", emailEnabled, digestEnabled, reminderDays },
+    update: { emailEnabled, digestEnabled, reminderDays, autoCloseDays },
+    create: { id: "app", emailEnabled, digestEnabled, reminderDays, autoCloseDays },
   });
 
   revalidatePath("/admin/settings");

@@ -196,6 +196,9 @@ model Setting {
   // Auto-reminder: if set, sends a reminder email N days after the last activity on open tickets
   reminderDays Int?
 
+  // Auto-close: if set, RESOLVED tickets are automatically closed after N days with no updates
+  autoCloseDays Int?
+
   // Daily digest: if enabled, IT staff receive a morning summary of open tickets
   digestEnabled Boolean @default(false)
 

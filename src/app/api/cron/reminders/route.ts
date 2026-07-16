@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendMail, ticketUrl } from "@/lib/mail";
 import { buildEmailHtml } from "@/lib/email-html";
 import { getSettings, renderTemplate } from "@/lib/settings";
+import { statusLabels } from "@/lib/ticket-labels";
 
 function cronAuth(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -59,5 +60,42 @@ export async function GET(request: Request) {
     sent++;
   }
 
-  return NextResponse.json({ sent });
+  // Auto-close RESOLVED tickets older than autoCloseDays with no recent comments
+  let closed = 0;
+  if (settings.autoCloseDays) {
+    const closeCutoff = new Date(Date.now() - settings.autoCloseDays * 24 * 60 * 60 * 1000);
+    const resolvedTickets = await prisma.ticket.findMany({
+      where: {
+        status: "RESOLVED",
+        resolvedAt: { lt: closeCutoff },
+        comments: {
+          none: { createdAt: { gte: closeCutoff } },
+        },
+      },
+      include: { requester: true },
+    });
+
+    for (const ticket of resolvedTickets) {
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: "CLOSED", closedAt: new Date() },
+      });
+      await prisma.ticketEvent.create({
+        data: { ticketId: ticket.id, actorId: null, type: "CLOSED", meta: { auto: true, days: settings.autoCloseDays, from: "RESOLVED" } },
+      });
+      if (settings.emailEnabled) {
+        const vars = { ticketTitle: ticket.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(ticket.id) };
+        const body = renderTemplate(settings.statusChangedEmailBody, vars);
+        await sendMail(
+          ticket.requester.email,
+          renderTemplate(settings.statusChangedEmailSubject, vars),
+          body,
+          buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: ticket.title })
+        );
+      }
+      closed++;
+    }
+  }
+
+  return NextResponse.json({ sent, closed });
 }
