@@ -42,7 +42,7 @@ export function TicketControls({
         <label className="field-label">Stato</label>
         <select
           value={curStatus}
-          disabled={isPending}
+          disabled={isPending || curStatus === "CLOSED"}
           onChange={(e) => {
             const val = e.target.value as TicketStatus;
             setCurStatus(val);
@@ -50,10 +50,15 @@ export function TicketControls({
           }}
           className="field-input"
         >
-          {Object.entries(statusLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          {Object.entries(statusLabels)
+            .filter(([value]) => value !== "CLOSED" || curStatus === "CLOSED")
+            .map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
         </select>
+        {curStatus === "CLOSED" && (
+          <p className="mt-1 text-xs text-gray-400">Usa "Riapri ticket" per cambiare stato.</p>
+        )}
       </div>
 
       <div>
