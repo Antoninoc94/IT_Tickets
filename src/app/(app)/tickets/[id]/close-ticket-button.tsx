@@ -17,7 +17,7 @@ export function CloseTicketButton({ ticketId }: { ticketId: string }) {
   }
 
   return (
-    <div className="card space-y-3 p-4">
+    <div className="card w-full space-y-3 p-4">
       <p className="text-sm font-medium text-gray-700">Motivo della chiusura</p>
       <form action={formAction} className="space-y-3">
         <textarea

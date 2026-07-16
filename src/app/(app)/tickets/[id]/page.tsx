@@ -170,8 +170,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      {(canClose || canDelete || canReopen || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
-        <div className="flex items-center justify-end gap-3">
+      {(canClose || canReopen || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
+        <div className="flex justify-end gap-3">
           {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
           {!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id && (
             <a href={`/tickets/new?parentId=${ticket.id}`} className="btn-secondary text-sm">
@@ -179,7 +179,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </a>
           )}
           {canClose && <CloseTicketButton ticketId={ticket.id} />}
-          {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
+        </div>
+      )}
+      {canDelete && (
+        <div className="flex justify-end">
+          <DeleteTicketButton ticketId={ticket.id} />
         </div>
       )}
 
