@@ -367,6 +367,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               colorClass={statusBarClass[s]}
             />
           ))}
+          <div className="border-t border-gray-100 pt-3 space-y-1.5 text-[11px] text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            <p className="font-medium text-gray-600 dark:text-gray-300">Legenda stati</p>
+            <p><span className="font-medium text-gray-700 dark:text-gray-200">Risolto</span> — soluzione applicata dal team IT, in attesa di conferma dall&apos;utente.</p>
+            <p><span className="font-medium text-gray-700 dark:text-gray-200">Chiuso</span> — pratica conclusa formalmente dopo conferma utente o chiusura esplicita con motivazione.</p>
+          </div>
         </div>
         <div className="card space-y-3 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Distribuzione per priorità</h2>
