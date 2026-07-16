@@ -371,11 +371,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Legenda stati</p>
             <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-green-500" />
-              <p><span className="font-semibold text-gray-800 dark:text-gray-100">Risolto</span> — soluzione applicata dal team IT, in attesa di conferma dall&apos;utente.</p>
+              <p><span className="font-semibold text-gray-900 dark:text-white">Risolto</span> — soluzione applicata dal team IT, in attesa di conferma dall&apos;utente.</p>
             </div>
             <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-gray-400" />
-              <p><span className="font-semibold text-gray-800 dark:text-gray-100">Chiuso</span> — pratica conclusa formalmente dopo conferma utente o chiusura esplicita con motivazione.</p>
+              <p><span className="font-semibold text-gray-900 dark:text-white">Chiuso</span> — pratica conclusa formalmente dopo conferma utente o chiusura esplicita con motivazione.</p>
             </div>
           </div>
         </div>
