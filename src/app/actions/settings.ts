@@ -187,10 +187,14 @@ export async function uploadFavicon(_state: FaviconState, formData: FormData): P
 // ---------------------------------------------------------------------------
 
 const SlaSchema = z.object({
-  slaUrgentHours:  z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
-  slaHighHours:    z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
-  slaMediumHours:  z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
-  slaLowHours:     z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaUrgentHours:   z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaHighHours:     z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaMediumHours:   z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaLowHours:      z.preprocess((v) => (v === "" ? null : Number(v)), z.number().int().min(1).max(8760).nullable()),
+  slaBusinessHours: z.boolean(),
+  slaWorkdayStart:  z.number().int().min(0).max(22),
+  slaWorkdayEnd:    z.number().int().min(1).max(23),
+  slaWorkDays:      z.string(),
 });
 
 export type SlaState = { error?: string; success?: boolean } | undefined;
@@ -199,13 +203,28 @@ export async function updateSla(_state: SlaState, formData: FormData): Promise<S
   const user = await getCurrentUser();
   if (user.role !== "ADMIN") return { error: "Non autorizzato." };
 
+  const slaBusinessHours = formData.get("slaBusinessHours") === "on";
+  const rawWorkDays = formData.getAll("slaWorkDay").map(String);
+  if (slaBusinessHours && rawWorkDays.length === 0) {
+    return { error: "Seleziona almeno un giorno lavorativo." };
+  }
+
   const validated = SlaSchema.safeParse({
-    slaUrgentHours: formData.get("slaUrgentHours"),
-    slaHighHours:   formData.get("slaHighHours"),
-    slaMediumHours: formData.get("slaMediumHours"),
-    slaLowHours:    formData.get("slaLowHours"),
+    slaUrgentHours:   formData.get("slaUrgentHours"),
+    slaHighHours:     formData.get("slaHighHours"),
+    slaMediumHours:   formData.get("slaMediumHours"),
+    slaLowHours:      formData.get("slaLowHours"),
+    slaBusinessHours,
+    slaWorkdayStart:  Number(formData.get("slaWorkdayStart") ?? 9),
+    slaWorkdayEnd:    Number(formData.get("slaWorkdayEnd") ?? 18),
+    slaWorkDays:      rawWorkDays.length > 0 ? rawWorkDays.join(",") : "1,2,3,4,5",
   });
-  if (!validated.success) return { error: "Valori non validi. Inserisci ore intere tra 1 e 8760." };
+  if (!validated.success) return { error: "Valori non validi. Controlla le ore e i giorni lavorativi." };
+
+  const { slaWorkdayStart, slaWorkdayEnd } = validated.data;
+  if (slaWorkdayEnd <= slaWorkdayStart) {
+    return { error: "L'orario di fine deve essere successivo all'orario di inizio." };
+  }
 
   await prisma.setting.upsert({
     where: { id: "app" },

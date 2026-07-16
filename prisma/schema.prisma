@@ -175,6 +175,13 @@ model Setting {
   slaMediumHours  Int?
   slaLowHours     Int?
 
+  // Business-hours SLA: count only hours within the configured work window.
+  slaBusinessHours Boolean @default(false)
+  slaWorkdayStart  Int     @default(9)
+  slaWorkdayEnd    Int     @default(18)
+  // Comma-separated ISO weekday numbers (1=Mon … 7=Sun), e.g. "1,2,3,4,5".
+  slaWorkDays      String  @default("1,2,3,4,5")
+
   newTicketEmailSubject String @default("Nuovo ticket: {{ticketTitle}}")
   newTicketEmailBody    String @default("{{requesterName}} ha aperto un nuovo ticket.\n\n{{ticketDescription}}\n\n{{ticketUrl}}")
 

@@ -72,7 +72,7 @@ Il sistema prevede tre ruoli distinti:
 - Tutti i permessi del ruolo IT
 - Crea, modifica e disattiva account utente; imposta i ruoli
 - Configura il branding (nome app, colore brand, logo, logo email, favicon)
-- Configura i parametri SLA per priorità
+- Configura i parametri SLA per priorità (ore per livello + modalità orari lavorativi)
 - Configura i template email (oggetto e corpo)
 - Gestisce le risposte rapide (canned responses)
 - Configura promemoria automatici e digest giornaliero
@@ -469,6 +469,17 @@ Lo SLA è calcolato dalla data di creazione del ticket:
 - **Rosso** ⚠ (overdue): tempo scaduto
 
 Lo stato SLA appare sulla dashboard accanto allo stato del ticket e nella pagina di dettaglio. I ticket Chiusi e Risolti non mostrano lo SLA.
+
+### Orari lavorativi (opzione)
+
+Attivando **"Conta solo ore lavorative"** in Impostazioni → SLA, il conteggio esclude notti e giorni non lavorativi:
+
+- **Orario**: fascia oraria lavorativa (inizio e fine, in UTC)
+- **Giorni**: giorni della settimana lavorativi (default: Lunedì–Venerdì)
+
+Esempio: SLA di 8 ore lavorative su una fascia 09:00–18:00 UTC. Un ticket aperto venerdì alle 17:00 UTC ha consumato 1 ora lavorativa; il rimanente 7 ore di conteggio riprende lunedì alle 09:00 UTC.
+
+> **Nota fuso orario**: gli orari sono in UTC. Per un'azienda italiana in CET (UTC+1) che lavora 9:00–18:00 locali, configurare inizio = 8, fine = 17. In CEST (estate, UTC+2): inizio = 7, fine = 16.
 
 ---
 

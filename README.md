@@ -9,7 +9,7 @@ Gestionale ticket IT interno aziendale, costruito con Next.js 16 (App Router) + 
 - **Tre ruoli**: Administrator · IT · Utente richiedente
 - **Commenti** pubblici e note interne (solo staff); menzioni `@nome` con notifica
 - **Email HTML** con logo aziendale, colore brand e CTA button — via SMTP interno
-- **SLA** configurabile per priorità, con badge ⚠/⏱ su dashboard e dettaglio
+- **SLA** configurabile per priorità, con badge ⚠/⏱ su dashboard e dettaglio; modalità **orari lavorativi** (esclude notti e weekend)
 - **Report** con KPI, grafici donut, distribuzione e andamento giornaliero; legenda stati
 - **Chiusura ticket con motivazione obbligatoria** — il motivo è registrato nella cronologia
 - **Chiusura automatica** dei ticket Risolti dopo N giorni senza aggiornamenti (configurabile)
