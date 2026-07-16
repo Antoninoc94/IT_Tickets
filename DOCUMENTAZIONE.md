@@ -38,8 +38,8 @@ L'applicazione è completamente **self-hosted**: gira in un container Docker e n
 | Linguaggio | TypeScript |
 | ORM | Prisma 7 |
 | Database | PostgreSQL 16 |
-| Autenticazione | Session cookie (iron-session) |
-| Email | Nodemailer (SMTP interno) |
+| Autenticazione | Cookie di sessione firmati (jose / JWT) |
+| Email | Nodemailer (SMTP interno), template HTML branded |
 | Stile | Tailwind CSS 4 |
 | Container | Docker + Docker Compose |
 
@@ -53,26 +53,30 @@ Il sistema prevede tre ruoli distinti:
 - Apre nuovi ticket
 - Vede solo i propri ticket nella dashboard
 - Aggiunge commenti pubblici sui propri ticket
-- Può chiudere o riaprire i propri ticket
-- Allega file alle richieste
+- Può chiudere i propri ticket (solo se in stato **Aperto**), con motivazione obbligatoria
+- Se il ticket è chiuso, può aprire un **ticket correlato** (figlio) con un click
+- Allega file alle richieste e ai commenti
 
 ### `IT` — Staff tecnico
 - Vede **tutti** i ticket nella dashboard
 - Assegna ticket a sé stesso o ad altri colleghi IT
-- Cambia stato, priorità e categoria
+- Cambia stato, priorità e categoria tramite i pannelli di controllo
 - Aggiunge commenti pubblici e **note interne** (non visibili all'utente)
-- Aggiunge/rimuove etichette (tag)
-- Accede alla sezione Report e Gestione (Etichette, Modelli)
-- Apre ticket **per conto di** un altro utente
+- Aggiunge/rimuove etichette (tag) direttamente dalla pagina del ticket
+- Accede alla sezione Report e alle sezioni Admin (Etichette, Modelli, Risposte rapide)
+- Apre ticket **per conto di** un altro utente registrato o inserendo un nome libero
+- Chiude ticket con motivazione obbligatoria; riapre ticket chiusi con motivazione
+- Usa azioni in blocco dalla dashboard (cambio stato massivo, assegnazione massiva)
 
 ### `ADMIN` — Amministratore
 - Tutti i permessi del ruolo IT
-- Crea, modifica e disattiva account utente
-- Imposta il ruolo di ogni utente
-- Configura le impostazioni di sistema (colore brand, logo, favicon)
+- Crea, modifica e disattiva account utente; imposta i ruoli
+- Configura il branding (nome app, colore brand, logo, logo email, favicon)
 - Configura i parametri SLA per priorità
 - Configura i template email (oggetto e corpo)
 - Gestisce le risposte rapide (canned responses)
+- Configura promemoria automatici e digest giornaliero
+- Configura la chiusura automatica dei ticket Risolti (giorni)
 - Esegue la pulizia degli allegati dei ticket chiusi
 
 ---
@@ -80,7 +84,7 @@ Il sistema prevede tre ruoli distinti:
 ## 4. Funzionalità implementate
 
 ### Autenticazione
-- **Login** con email e password
+- **Login** con email e password (hash Argon2)
 - **Auto-registrazione**: l'utente compila il form, riceve un codice di verifica via email (6 cifre, valido 15 minuti) e lo conferma
 - Possibilità di limitare la registrazione a uno specifico dominio email (`ALLOWED_EMAIL_DOMAIN`)
 - **Password temporanea**: gli account creati dall'admin richiedono il cambio password al primo accesso (`mustChangePassword`)
@@ -90,7 +94,7 @@ Il sistema prevede tre ruoli distinti:
 - Tabella ticket con paginazione numerata (10 ticket per pagina)
 - Indicatore badge rosso in header per ticket con nuova attività non letta
 - **Filtri**: stato, priorità, categoria, richiedente, assegnatario, testo libero, intervallo di date
-- **Ordinamento** su qualsiasi colonna (Titolo, Richiedente, Priorità, Stato, Creato/Modificato)
+- **Ordinamento** su qualsiasi colonna (Titolo, Richiedente, Priorità, Stato, Data)
 - **Esportazione CSV** dei ticket filtrati
 - Badge SLA (⚠ in ritardo / ⏱ in scadenza) direttamente sulla riga del ticket
 
@@ -103,49 +107,65 @@ Il sistema prevede tre ruoli distinti:
 ### Gestione ticket
 - Apertura ticket con: titolo, descrizione, categoria, priorità, allegati
 - **Modelli (template)**: pre-compilazione del form da un template configurato
-- Staff può aprire ticket **per conto di** un altro utente tramite dropdown "Richiedente"
-- Cronologia completa degli eventi (creazione, cambi stato, assegnazioni, risoluzione)
+- Staff può aprire ticket **per conto di** un altro utente (registrato o nome libero)
+- Cronologia completa degli eventi (creazione, cambi stato, assegnazioni, chiusura, riapertura) — le azioni di sistema mostrano "Sistema" come autore
 - Commenti pubblici e note interne per lo staff
 - **Menzioni** nei commenti (`@nome`) con notifica email all'utente menzionato
-- **Allegati** su ticket e commenti (limite configurabile, default 25 MB) con anteprima inline: immagini visualizzate direttamente, PDF e testo in iframe, altri file scaricabili. Modale con tasto ESC e click esterno per chiudere
-- Tag colorati assegnabili liberamente
-- Pulsante "Chiudi" per il richiedente, "Riapri" per tutti
-- Pulsante "Elimina" solo per ADMIN
+- **Allegati** su ticket e commenti (limite configurabile, default 25 MB) con anteprima inline: immagini visualizzate direttamente, PDF/testo in iframe, altri file scaricabili
+- Tag colorati assegnabili e rimuovibili direttamente dalla pagina del ticket
+- **Chiusura con motivazione obbligatoria**: cliccando "Chiudi ticket" si apre un form inline che richiede almeno 5 caratteri di motivazione; il motivo viene salvato come commento pubblico
+- **Riapertura con motivazione obbligatoria**: stesso meccanismo per "Riapri ticket"
+- La chiusura tramite menu a tendina Stato è disabilitata — si usa solo il bottone dedicato
+- Utenti possono chiudere solo ticket in stato **Aperto** (non IN_PROGRESS, WAITING, RESOLVED)
+- **Eliminazione** ticket: solo ADMIN (o richiedente su ticket aperti)
+
+### Ticket correlati (cronologia)
+- Ogni ticket può avere un **ticket padre** (`parentTicketId`)
+- Quando si apre un ticket correlato (da un ticket chiuso), il collegamento padre/figlio viene mantenuto
+- La pagina di dettaglio mostra un **riquadro "Cronologia ticket"** con padre e figli collegati, con link e badge stato
+- Gli utenti su un ticket chiuso vedono il bottone **"Apri ticket correlato"** per aprire una nuova richiesta collegata
 
 ### Etichette (tag)
-- Creazione, modifica nome/colore, eliminazione
+- Creazione, modifica nome/colore, eliminazione dalla sezione Admin
 - Ricerca tag in tempo reale nel pannello di gestione
-- Tag visualizzati sulla dashboard come chip colorati
+- Aggiunta/rimozione tag direttamente dalla pagina di dettaglio del ticket (solo staff)
+- Tag visualizzati sulla dashboard e sul dettaglio come chip colorati
 
 ### Modelli ticket (template)
-- L'admin IT può creare template con titolo, descrizione, categoria e priorità pre-impostati
-- Il richiedente o lo staff seleziona un template prima di compilare il form
-- I template sono modificabili ed eliminabili dalla sezione Admin → Gestione → Modelli
+- L'admin può creare template con titolo, descrizione, categoria e priorità pre-impostati
+- Lo staff seleziona un template nel form di apertura ticket per pre-compilarlo
+- Modificabili ed eliminabili da Admin → Gestione → Modelli
 
 ### Risposte rapide (canned responses)
-- Testi predefiniti riutilizzabili per rispondere velocemente ai ticket
-- Gestione nella sezione Admin → Admin → Risposte rapide
-- Inseribili nei commenti con un click (dropdown)
+- Testi predefiniti riutilizzabili per rispondere velocemente
+- Gestione da Admin → Risposte rapide
+- Inseribili nei commenti tramite dropdown con un click
 
 ### Report
-- KPI principali: ticket aperti, tasso di risoluzione, tempo medio di risoluzione, tempo medio di prima risposta IT
-- Distribuzione per categoria (grafico a barre orizzontali)
-- Distribuzione per priorità (grafico donut)
-- Tabella per tecnico: ticket assegnati, risolti, tempo medio risoluzione, tempo medio prima risposta
-- Filtro per intervallo di date
-- **Stampa** ottimizzata (nasconde la navigazione, mostra solo il contenuto)
+- **KPI principali**: totale ticket, ticket ancora aperti, tempo medio di risoluzione (da creazione a Risolto/Chiuso), nuovi ticket ultimi 30 giorni con trend ▲/▼
+- **Seconda riga KPI**: tempo medio prima risposta IT, ticket con almeno una risposta
+- **Grafico andamento giornaliero** (linea, ultimi 60 giorni o periodo filtrato)
+- **Grafici donut**: distribuzione per stato, per priorità, per categoria
+- **Barre di distribuzione**: stessa ripartizione in formato lista con percentuali
+- **Legenda stati** nella sezione "Distribuzione per stato": spiega la differenza tra Risolto (soluzione applicata, attesa conferma utente) e Chiuso (pratica conclusa)
+- **Tabella per tecnico**: ticket risolti, tempo medio risoluzione, prima risposta media
+- **Ticket per richiedente** e **carico di lavoro IT**
+- **Filtri**: data da/a, categoria, priorità, assegnatario
+- **Stampa** ottimizzata con header stampabile (nome app, data, filtri attivi)
 
-### Impostazioni di sistema (solo ADMIN)
-- Nome applicazione
-- Colore brand principale (color picker)
-- Logo aziendale (PNG/SVG, max 5 MB) — rimpiazza il badge con le iniziali
-- Favicon personalizzata
+### Branding e impostazioni di sistema (solo ADMIN)
+- Nome applicazione (mostrato in header e nelle email)
+- Colore brand principale (color picker — propagato via CSS custom property)
+- Logo aziendale (PNG/SVG, max 5 MB) — sostituisce il badge con le iniziali
+- **Logo email separato** (es. versione bianca per header email su sfondo colorato)
+- Favicon personalizzata (mostrata nella tab del browser)
 - Configurazione SLA per priorità (ore per URGENT / HIGH / MEDIUM / LOW)
-- Abilitazione/disabilitazione delle email
-- Configurazione template email (oggetto e corpo con variabili `{{placeholder}}`)
-- Numero di giorni per i promemoria automatici
-- Abilitazione del digest giornaliero per lo staff IT
-- Pulizia allegati dei ticket chiusi (con riepilogo spazio occupato)
+- Abilitazione/disabilitazione invio email (master switch)
+- Template email personalizzabili (oggetto + corpo con variabili `{{placeholder}}`)
+- Promemoria automatico (giorni di inattività prima dell'email al tecnico)
+- **Chiusura automatica ticket Risolti** (giorni prima della chiusura automatica; lascia vuoto per disabilitare)
+- Digest giornaliero per lo staff IT (abilitazione on/off)
+- Pulizia allegati dei ticket chiusi con riepilogo spazio occupato
 
 ### Tema visivo
 - **Tre modalità**: Chiaro ☀️ / Scuro 🌙 / Automatico 💻 (segue le preferenze del sistema operativo)
@@ -162,17 +182,19 @@ User
 ├── id, email, name, passwordHash, role (ADMIN|IT|USER)
 ├── active, mustChangePassword, emailVerifiedAt
 ├── totpSecret, totpEnabled          ← predisposto per 2FA TOTP (non attivo)
-├── verificationCodeHash / ExpiresAt ← codice di verifica email
-└── relazioni: ticketsCreated, ticketsAssigned, comments, attachments, ticketViews
+├── verificationCodeHash / ExpiresAt ← codice di verifica auto-registrazione
+└── relazioni: ticketsCreated, ticketsAssigned, comments, attachments, ticketViews, ticketEvents
 
 Ticket
 ├── id, title, description
 ├── status (OPEN|IN_PROGRESS|WAITING_ON_USER|RESOLVED|CLOSED)
 ├── priority (LOW|MEDIUM|HIGH|URGENT)
 ├── category (HARDWARE|SOFTWARE|NETWORK|ACCOUNT|OTHER)
-├── requesterId → User, assigneeId → User?
+├── requesterId → User, requesterLabel? (nome libero per non registrati)
+├── assigneeId → User?
+├── parentTicketId → Ticket? (self-referencing per ticket correlati)
 ├── createdAt, updatedAt, resolvedAt?, closedAt?
-└── relazioni: comments, attachments, events, views, tags (many-to-many)
+└── relazioni: comments, attachments, events, views, tags (many-to-many), parent, children
 
 Comment
 ├── id, body, internal (nota interna se true)
@@ -185,24 +207,33 @@ Attachment
 └── File salvati in /app/uploads (volume Docker persistente)
 
 TicketEvent
-├── id, type (CREATED|STATUS_CHANGED|ASSIGNED|UNASSIGNED|CLOSED|REOPENED|...)
-├── meta (JSON con dati aggiuntivi, es. { from, to } per cambio stato)
-├── ticketId, actorId → User?
+├── id, type (CREATED|STATUS_CHANGED|ASSIGNED|UNASSIGNED|CLOSED|REOPENED|PRIORITY_CHANGED|CATEGORY_CHANGED)
+├── meta (JSON — { from, to } per cambio stato; { assigneeName } per assegnazione;
+│         { auto, days, from } per chiusura automatica)
+├── ticketId, actorId → User?  ← null quando l'azione è eseguita dal sistema
 └── createdAt
 
 Tag              ← Etichette colorate (many-to-many con Ticket)
 TicketTemplate   ← Modelli di ticket pre-compilati
 CannedResponse   ← Risposte rapide per lo staff
-TicketView       ← Traccia l'ultima visualizzazione (per badge "non letto")
+TicketView       ← Traccia l'ultima visualizzazione per utente/ticket (badge "non letto")
 
-Setting          ← Riga singleton (id="app") con tutte le impostazioni di sistema
+Setting          ← Riga singleton (id="app") con tutte le impostazioni:
+├── appName, brandColor
+├── logoStorageKey?, emailLogoStorageKey?, faviconStorageKey?
+├── slaUrgentHours?, slaHighHours?, slaMediumHours?, slaLowHours?
+├── newTicketEmail*, assignedEmail*, statusChangedEmail*,
+│   newCommentEmail*, mentionEmail* (subject + body template per ciascuno)
+├── emailEnabled, digestEnabled
+├── reminderDays?   ← giorni inattività prima del promemoria
+└── autoCloseDays?  ← giorni dopo cui un ticket RESOLVED viene chiuso automaticamente
 ```
 
 ---
 
 ## 6. Variabili d'ambiente
 
-Configurate nel file `.env` nella root del progetto (o direttamente nel `docker-compose.yml`):
+Configurate nel file `.env` nella root del progetto:
 
 | Variabile | Obbligatoria | Default | Descrizione |
 |---|---|---|---|
@@ -215,10 +246,10 @@ Configurate nel file `.env` nella root del progetto (o direttamente nel `docker-
 | `SMTP_PASS` | — | — | Password SMTP |
 | `SMTP_FROM` | ✅ | — | Indirizzo mittente email (es. `support@azienda.it`) |
 | `APP_URL` | ✅ | `http://localhost:3000` | URL pubblico dell'app (usato nei link email) |
-| `ALLOWED_EMAIL_DOMAIN` | — | — | Se impostato, solo email di questo dominio possono registrarsi (es. `azienda.it`) |
+| `ALLOWED_EMAIL_DOMAIN` | — | — | Se impostato, solo email di questo dominio possono registrarsi |
 | `MAX_UPLOAD_SIZE_MB` | — | `25` | Dimensione massima allegati in MB |
 | `UPLOADS_DIR` | — | `/app/uploads` | Percorso directory allegati (nel container) |
-| `POSTGRES_USER` | — | `it_tickets` | Utente PostgreSQL (usato nel compose) |
+| `POSTGRES_USER` | — | `it_tickets` | Utente PostgreSQL (usato nel Compose) |
 | `POSTGRES_PASSWORD` | ✅ | — | Password PostgreSQL |
 | `POSTGRES_DB` | — | `it_tickets` | Nome database |
 | `CRON_SECRET` | — | — | Token per autenticare le chiamate cron (`x-cron-secret` header) |
@@ -243,27 +274,38 @@ ALLOWED_EMAIL_DOMAIN=azienda.it
 ### Primo avvio
 
 ```bash
-# 1. Clona il repository
-git clone <url-repo> && cd IT_Tickets
-
-# 2. Crea il file .env con le variabili sopra
-cp .env.example .env   # poi edita con i valori reali
-
-# 3. Avvia tutto
+git clone <url-repo> IT_Tickets && cd IT_Tickets
+cp .env.example .env   # compila le variabili obbligatorie
 docker compose up -d
+docker compose run --rm migrate npx prisma db seed   # crea il primo account ADMIN
 ```
 
-Al primo avvio il servizio `migrate` esegue automaticamente tutte le migration Prisma e crea le tabelle nel database. Dopo il completamento, il servizio `app` si avvia sulla porta `3000`.
+Al primo avvio il servizio `migrate` esegue automaticamente tutte le migration Prisma. Dopo il completamento, il servizio `app` si avvia sulla porta `3000`.
 
-### Aggiornamento a una nuova versione
+### Aggiornamenti
+
+Lo script `deploy.sh` (nella root del progetto) automatizza l'intero processo:
 
 ```bash
-git pull
+./deploy.sh
+```
+
+Equivale a:
+
+```bash
+git pull origin <branch>
+docker compose down
 docker compose build
 docker compose up -d
 ```
 
-Il servizio `migrate` riesegue solo le migration non ancora applicate.
+Lo script usa `set -e` e si ferma al primo errore. Le migration vengono riapplicate automaticamente dal servizio `migrate` ad ogni avvio.
+
+### Prima esecuzione dello script
+
+```bash
+chmod +x ~/IT_Tickets/deploy.sh
+```
 
 ### Servizi nel Compose
 
@@ -272,33 +314,14 @@ Il servizio `migrate` riesegue solo le migration non ancora applicate.
 | `postgres` | `postgres:16-alpine` | Database PostgreSQL con volume persistente |
 | `migrate` | Build locale (target `builder`) | Esegue `prisma migrate deploy` all'avvio, poi termina |
 | `app` | Build locale (target `runner`) | Applicazione Next.js sulla porta 3000 |
-| `cron` | `alpine:3` | Esegue i cron job giornalieri (promemoria + digest) |
+| `cron` | `alpine:3` | Esegue i cron job giornalieri (promemoria + auto-chiusura + digest) |
 
-### Volume persistenti
+### Volumi persistenti
 
 - `postgres_data` — dati del database
 - `uploads_data` — allegati caricati dagli utenti (montato in `/app/uploads`)
 
-### Primo account ADMIN
-
-Dopo il primo avvio, crea manualmente il primo utente admin tramite psql o un client SQL:
-
-```sql
--- Genera un hash bcrypt della password con: node -e "const b=require('bcryptjs');b.hash('PASSWORD',12).then(console.log)"
-INSERT INTO "User" (id, email, name, "passwordHash", role, "emailVerifiedAt", "createdAt", "updatedAt")
-VALUES (
-  gen_random_uuid()::text,
-  'admin@azienda.it',
-  'Amministratore',
-  '$2a$12$HASH_GENERATO_SOPRA',
-  'ADMIN',
-  NOW(),
-  NOW(),
-  NOW()
-);
-```
-
-In alternativa, registrarsi normalmente e poi promuovere il proprio account ad ADMIN direttamente nel database.
+Vedi [`docs/deploy.md`](./docs/deploy.md) per la guida completa al deploy su VM ESXi con Nginx Proxy Manager.
 
 ---
 
@@ -308,60 +331,71 @@ In alternativa, registrarsi normalmente e poi promuovere il proprio account ad A
 src/
 ├── app/
 │   ├── (app)/                  ← Tutte le pagine autenticate (layout con header)
-│   │   ├── layout.tsx          ← Header con navigazione, theme toggle
-│   │   ├── nav-dropdown.tsx    ← Componente dropdown della nav (client)
-│   │   ├── unread-badge.tsx    ← Badge contatore ticket non letti (polling 30s)
+│   │   ├── layout.tsx          ← Header con navigazione, theme toggle, badge non letti
+│   │   ├── nav-dropdown.tsx    ← Dropdown navigazione (client)
+│   │   ├── mobile-nav.tsx      ← Navigazione mobile (drawer)
+│   │   ├── unread-badge.tsx    ← Badge contatore non letti (polling 30s)
 │   │   ├── dashboard/
-│   │   │   ├── page.tsx        ← Server component: fetch ticket, SLA, paginazione
-│   │   │   ├── ticket-table.tsx← Client component: tabella interattiva, bulk actions
-│   │   │   └── filter-bar.tsx  ← Filtri (form GET)
+│   │   │   ├── page.tsx        ← Server: fetch ticket, SLA, paginazione, filtri
+│   │   │   ├── ticket-table.tsx← Client: tabella interattiva + bulk actions
+│   │   │   └── filter-bar.tsx  ← Filtri avanzati (form GET)
 │   │   ├── tickets/
-│   │   │   ├── new/            ← Form apertura ticket (con template e richiedente)
-│   │   │   └── [id]/           ← Dettaglio ticket, commenti, allegati, eventi
-│   │   ├── reports/            ← Dashboard reportistica con grafici
+│   │   │   ├── new/            ← Form apertura ticket (template, requester, parent)
+│   │   │   └── [id]/           ← Dettaglio: commenti, allegati, controlli, cronologia
+│   │   │       ├── ticket-controls.tsx    ← Dropdown stato/priorità/categoria/assegnatario
+│   │   │       ├── close-ticket-button.tsx← Form inline con motivazione obbligatoria
+│   │   │       ├── reopen-ticket-button.tsx← Form inline con motivazione obbligatoria
+│   │   │       ├── delete-ticket-button.tsx
+│   │   │       ├── ticket-history.tsx     ← Cronologia eventi (autore "Sistema" per cron)
+│   │   │       ├── tag-editor.tsx         ← Aggiunta/rimozione tag
+│   │   │       ├── comment-form.tsx       ← Commenti + risposte rapide + menzioni
+│   │   │       ├── attachment-list.tsx    ← Lista allegati con anteprima modale
+│   │   │       └── view-tracker.tsx       ← Traccia ultima visualizzazione
+│   │   ├── reports/            ← Report con KPI, grafici, filtri e stampa
 │   │   ├── admin/
 │   │   │   ├── users/          ← Gestione utenti (ADMIN)
 │   │   │   ├── tags/           ← Gestione etichette (IT+ADMIN)
 │   │   │   ├── templates/      ← Modelli ticket (IT+ADMIN)
 │   │   │   ├── canned-responses/ ← Risposte rapide (ADMIN)
 │   │   │   └── settings/       ← Impostazioni sistema (ADMIN)
-│   │   └── account/            ← Profilo e cambio password dell'utente corrente
+│   │   └── account/            ← Profilo e cambio password utente corrente
 │   ├── actions/                ← Server Actions (mutazioni dati)
-│   │   ├── tickets.ts          ← CRUD ticket, bulk actions
+│   │   ├── tickets.ts          ← CRUD ticket, bulk, close/reopen con motivazione
 │   │   ├── auth.ts             ← Login, logout
 │   │   ├── register.ts         ← Auto-registrazione + verifica email
 │   │   ├── users.ts            ← Gestione utenti (admin)
 │   │   ├── tags.ts             ← CRUD tag
 │   │   ├── templates.ts        ← CRUD modelli ticket
 │   │   ├── canned-responses.ts ← CRUD risposte rapide
-│   │   ├── settings.ts         ← Salvataggio impostazioni
+│   │   ├── settings.ts         ← Salvataggio impostazioni (incluso autoCloseDays)
 │   │   ├── attachments.ts      ← Upload e cancellazione allegati
 │   │   └── account.ts          ← Modifica profilo, cambio password
 │   ├── api/
 │   │   ├── attachments/[id]/   ← Download sicuro allegati (auth check)
-│   │   ├── branding/           ← Serving logo e favicon
+│   │   ├── branding/           ← Serving logo, email-logo, favicon
 │   │   ├── cron/
-│   │   │   ├── reminders/      ← Promemoria ticket inattivi
-│   │   │   └── digest/         ← Digest giornaliero per staff IT
+│   │   │   ├── reminders/      ← Promemoria inattività + chiusura automatica RESOLVED
+│   │   │   └── digest/         ← Digest giornaliero staff IT
 │   │   ├── tickets/export/     ← Export CSV ticket filtrati
 │   │   └── unread-count/       ← Contatore badge non letti (polling)
 │   ├── login/                  ← Pagina di accesso
 │   ├── register/               ← Auto-registrazione + verifica codice
 │   ├── change-password/        ← Cambio password obbligatorio primo accesso
-│   ├── layout.tsx              ← Root layout (font, brand color, theme init script)
+│   ├── layout.tsx              ← Root layout (font, brand color CSS var, theme init)
 │   ├── brand.tsx               ← Componenti logo/badge aziendale
-│   ├── theme-toggle.tsx        ← Toggle tema chiaro/scuro/auto
+│   ├── theme-toggle.tsx        ← Toggle tema chiaro/scuro/automatico
 │   ├── local-time.tsx          ← Data/ora nel fuso locale del browser
-│   └── globals.css             ← Design tokens, dark mode, componenti CSS
+│   └── globals.css             ← Design tokens CSS, dark mode, classi componenti
 ├── lib/
 │   ├── dal.ts                  ← Data Access Layer (getCurrentUser, guard auth)
 │   ├── prisma.ts               ← Istanza singleton Prisma Client
 │   ├── mail.ts                 ← Invio email via Nodemailer
+│   ├── email-html.ts           ← Builder email HTML (branded: logo, colore, CTA button)
 │   ├── settings.ts             ← Lettura/cache impostazioni + renderTemplate
-│   ├── sla.ts                  ← Calcolo SLA (stato ok/warning/overdue)
-│   ├── session.ts              ← Gestione cookie sessione (iron-session)
+│   ├── sla.ts                  ← Calcolo SLA (ok / warning / overdue)
+│   ├── session.ts              ← Gestione cookie sessione (jose JWT)
 │   ├── attachments.ts          ← Salvataggio/cancellazione file su disco
-│   ├── ticket-labels.ts        ← Label e classi CSS per stato/priorità
+│   ├── ticket-labels.ts        ← Label, classi CSS e colori per stato/priorità/categoria
 │   ├── render-mentions.tsx     ← Parser @menzioni nei commenti
 │   ├── verification-code.ts    ← Generazione e hash codice verifica email
 │   ├── format-bytes.ts         ← Formattazione dimensione file
@@ -375,21 +409,26 @@ src/
 
 Le email vengono inviate tramite il server SMTP configurato nelle variabili d'ambiente. Il sistema non utilizza servizi terzi (SendGrid, Mailgun, ecc.).
 
+Tutte le email hanno un **layout HTML branded**: header colorato con logo aziendale (o logo email dedicato), corpo in testo formattato, pulsante CTA con link al ticket. Il titolo del ticket appare come link cliccabile nel corpo, non come URL grezzo.
+
 ### Trigger di notifica
 
 | Evento | Destinatario |
 |---|---|
 | Nuovo ticket aperto | Tutto lo staff IT attivo |
 | Ticket assegnato | Tecnico assegnatario |
-| Cambio di stato | Richiedente |
+| Cambio di stato (incluso Risolto/Chiuso) | Richiedente |
+| Ticket riaperto dallo staff | Richiedente |
+| Ticket riaperto dall'utente | Tutto lo staff IT attivo |
 | Nuovo commento pubblico | Richiedente (se autore ≠ richiedente) |
 | Menzione `@nome` nel commento | Utente menzionato |
 | Promemoria ticket inattivo | Tecnico assegnatario |
+| Chiusura automatica (cron) | Richiedente |
 | Digest giornaliero | Tutto lo staff IT attivo |
 
 ### Template email
 
-Ogni template è configurabile dall'admin con variabili `{{placeholder}}`:
+Ogni template è personalizzabile dall'admin con variabili `{{placeholder}}`:
 
 | Variabile | Disponibile in |
 |---|---|
@@ -413,7 +452,7 @@ Lo SLA definisce il tempo massimo entro cui un ticket deve essere risolto in bas
 
 ### Configurazione
 
-Dall'admin → Impostazioni si impostano le ore per ogni livello:
+Da Admin → Impostazioni si impostano le ore per ogni livello:
 - URGENT: es. 4 ore
 - HIGH: es. 8 ore
 - MEDIUM: es. 24 ore
@@ -423,30 +462,40 @@ Se un valore è lasciato vuoto, quella priorità non ha SLA.
 
 ### Calcolo e visualizzazione
 
-Lo SLA è calcolato a partire dalla data di creazione del ticket:
+Lo SLA è calcolato dalla data di creazione del ticket:
 
-- **Verde** (ok): tempo rimanente > 20% del totale
+- **Nessun badge** (ok): tempo rimanente > 20% del totale
 - **Arancione** ⏱ (warning): tempo rimanente ≤ 20% ma non ancora scaduto
 - **Rosso** ⚠ (overdue): tempo scaduto
 
-Lo stato SLA appare sulla dashboard accanto allo stato del ticket e sulla pagina di dettaglio. I ticket chiusi/risolti non mostrano lo SLA.
+Lo stato SLA appare sulla dashboard accanto allo stato del ticket e nella pagina di dettaglio. I ticket Chiusi e Risolti non mostrano lo SLA.
 
 ---
 
 ## 11. Cron job automatici
 
-Il container `cron` (Alpine Linux) esegue due chiamate HTTP ogni giorno alle **07:00**:
+Il container `cron` (Alpine Linux) esegue due chiamate HTTP ogni giorno alle **07:00**. Entrambe le API sono protette dall'header `x-cron-secret`.
 
 ### `/api/cron/reminders`
-Invia email di promemoria al tecnico assegnatario per ogni ticket:
-- Non chiuso/risolto
+
+Esegue due operazioni in sequenza:
+
+**1. Promemoria inattività**: invia un'email al tecnico assegnatario per ogni ticket:
+- Non in stato Chiuso o Risolto
 - Con un assegnatario
-- Senza commenti negli ultimi N giorni (configurabile in Impostazioni)
+- Senza commenti negli ultimi N giorni (configurabile in Impostazioni → "Promemoria automatico")
+
+**2. Chiusura automatica Risolti**: chiude automaticamente i ticket in stato **Risolto** dove:
+- `resolvedAt` è più vecchio di N giorni (configurabile in Impostazioni → "Chiusura automatica ticket Risolti")
+- Non ci sono commenti nelle ultime N giorni
+
+Per ogni ticket auto-chiuso: aggiorna lo stato a CLOSED, crea un `TicketEvent` con `actorId = null` (mostrato come "Sistema" nella cronologia), e invia l'email di cambio stato al richiedente.
+
+Nella cronologia del ticket l'evento appare come: *"Ticket chiuso automaticamente dopo N giorni senza aggiornamenti"*.
 
 ### `/api/cron/digest`
-Invia allo staff IT un riepilogo mattutino dei ticket aperti (se il digest è abilitato in Impostazioni).
 
-Entrambe le API sono protette dall'header `x-cron-secret` che deve corrispondere a `CRON_SECRET`.
+Invia allo staff IT un riepilogo mattutino dei ticket aperti (se il digest è abilitato in Impostazioni).
 
 ---
 
@@ -471,8 +520,6 @@ La scelta viene salvata in `localStorage` e applicata immediatamente senza ricar
 
 ### Variabili CSS
 
-Tutti i colori dell'interfaccia usano variabili CSS:
-
 ```css
 :root {
   --background: #f4f5f7;
@@ -480,7 +527,7 @@ Tutti i colori dell'interfaccia usano variabili CSS:
   --surface:    #ffffff;
   --border:     #e5e7eb;
   --muted:      #6b7280;
-  --brand:      (dal database — colore brand aziendale)
+  --brand:      /* dal database — colore brand aziendale */
 }
 
 [data-theme="dark"] {
@@ -496,7 +543,7 @@ Tutti i colori dell'interfaccia usano variabili CSS:
 
 ## 13. Roadmap — aggiornamenti futuri
 
-Di seguito le funzionalità non ancora implementate, ordinate per priorità.
+Funzionalità non ancora implementate, ordinate per priorità.
 
 ### Alta priorità
 
@@ -504,71 +551,45 @@ Di seguito le funzionalità non ancora implementate, ordinate per priorità.
 Lo schema database include già i campi `totpSecret` e `totpEnabled` sul modello `User`. Manca l'implementazione:
 - Schermata di configurazione 2FA con QR code (app Authenticator)
 - Verifica OTP al login
-- Disabilitazione 2FA con codice di backup
-- **File da creare**: `src/app/(app)/account/2fa/page.tsx`, `src/app/login/totp-form.tsx`
 - **Libreria suggerita**: `otpauth` o `speakeasy`
 
-#### 📱 Menu mobile / hamburger
-La navigazione è nascosta su schermi piccoli (`hidden sm:flex`). Manca un menu hamburger per mobile:
-- Pulsante ☰ visibile solo su mobile
-- Drawer laterale o menu espandibile con tutti i link
-- **File da modificare**: `src/app/(app)/layout.tsx`, aggiungere un `MobileNav` client component
-
-#### 🔔 Notifiche in-app (real-time)
-Attualmente le notifiche arrivano solo via email. Un sistema di notifiche in-app richiederebbe:
+#### 🔔 Notifiche in-app
+Attualmente le notifiche arrivano solo via email. Un sistema in-app richiederebbe:
 - Modello `Notification` nel database
-- Badge in header (già presente per i non letti, ma solo per i ticket)
-- Lista notifiche a click
-- Eventuale integrazione WebSocket o Server-Sent Events per aggiornamento live
+- Lista notifiche con badge nel header
+- Eventuale integrazione Server-Sent Events per aggiornamento live
 
 ### Media priorità
 
 #### 🔍 Ricerca full-text avanzata
 La ricerca attuale usa `contains` su titolo e descrizione. Migliorabile con:
-- Indice full-text PostgreSQL (`@@` operator, `to_tsvector`)
+- Indice full-text PostgreSQL (`to_tsvector`)
 - Ricerca anche nel corpo dei commenti
 - Risultati ordinati per rilevanza
 
-#### 🔄 Aggiornamento automatico del ticket
+#### 🔄 Aggiornamento automatico pagina ticket
 La pagina dettaglio ticket non si aggiorna automaticamente quando un altro utente aggiunge un commento. Opzioni:
-- Polling ogni 30 secondi (come già fatto per il badge non letti)
+- Polling ogni 30 secondi
 - Server-Sent Events per update in tempo reale
 
 #### 📋 Vista Kanban
-Alternativa alla tabella della dashboard: una board a colonne per stato (Aperto → In lavorazione → In attesa → Risolto) con drag & drop dei ticket.
+Alternativa alla tabella della dashboard: board a colonne per stato con drag & drop dei ticket.
 
 #### ⏱ SLA per orari lavorativi
-Attualmente lo SLA conta le ore di calendario (24/7). In un contesto aziendale reale è preferibile contare solo le ore lavorative (es. 8:00-18:00 da lunedì a venerdì).
+Attualmente lo SLA conta le ore di calendario (24/7). Per contare solo le ore lavorative:
 - Configurare la finestra lavorativa nelle Impostazioni
-- Modificare `src/lib/sla.ts` per escludere i weekend e le ore notturne
+- Modificare `src/lib/sla.ts` per escludere weekend e ore notturne
 
 ### Bassa priorità
 
-#### 📧 Email HTML
-Le email inviate sono in testo semplice. Aggiungere template HTML con brand color e logo per un aspetto più professionale.
-- **Librerie suggerite**: `@react-email/components` o `mjml`
-
-#### 📊 Grafico trend nel tempo
-La pagina Report mostra già il confronto "ultimi 30 giorni vs 30 giorni precedenti" come numero con indicatore ▲/▼, e supporta già la stampa/export PDF. Quello che manca è:
-- Grafico lineare interattivo con l'andamento giornaliero/settimanale nel tempo
-- Filtro per singolo tecnico nella sezione "Statistiche per tecnico"
-
 #### 🏷️ Categorie personalizzabili
-Le categorie ticket (HARDWARE, SOFTWARE, NETWORK, ACCOUNT, OTHER) sono attualmente fisse (enum Prisma). Renderle configurabili richiede:
-- Nuovo modello `TicketCategory` nel database
-- Migration per spostare le categorie da enum a tabella
-- Gestione CRUD nella sezione admin
+Le categorie (HARDWARE, SOFTWARE, NETWORK, ACCOUNT, OTHER) sono attualmente fisse. Renderle configurabili richiede un nuovo modello `TicketCategory` e una migration.
 
 #### 🌐 Internazionalizzazione (i18n)
-L'interfaccia è attualmente solo in italiano. Per supportare più lingue:
-- Adottare `next-intl` o `next-i18next`
-- Estrarre tutte le stringhe in file di traduzione
-- Selector di lingua nelle impostazioni utente
+L'interfaccia è solo in italiano. Per supportare più lingue: adottare `next-intl` ed estrarre le stringhe in file di traduzione.
 
-#### 📱 App mobile (PWA)
-L'applicazione è già responsive ma non è configurata come Progressive Web App. Aggiungere:
-- `manifest.json` con icone e colore tema
-- Service Worker per notifiche push native
+#### 📱 Progressive Web App (PWA)
+Aggiungere `manifest.json` e Service Worker per installazione su dispositivi mobili e notifiche push native.
 
 ---
 
@@ -578,10 +599,10 @@ L'applicazione è già responsive ma non è configurata come Progressive Web App
 
 ```bash
 # Modifica prisma/schema.prisma, poi:
-npx prisma migrate dev --name nome_della_migration
+npx prisma migrate dev --name nome_migration
 
-# In produzione (Docker), la migration viene applicata automaticamente all'avvio
-# tramite il servizio `migrate` nel docker-compose.yml
+# In produzione (Docker), la migration viene applicata automaticamente
+# all'avvio tramite il servizio `migrate` nel docker-compose.yml
 ```
 
 ### Rigenerare il client Prisma
@@ -590,17 +611,16 @@ npx prisma migrate dev --name nome_della_migration
 npx prisma generate
 ```
 
-### Lanciare l'app in sviluppo locale
+### Avvio in sviluppo locale
 
 ```bash
 npm install
-# Serve un PostgreSQL locale o usa Docker:
-docker compose up postgres -d
+docker compose up postgres -d      # oppure PostgreSQL locale
 npx prisma migrate deploy
 npm run dev
 ```
 
-### Accedere al database in produzione
+### Accesso al database in produzione
 
 ```bash
 docker compose exec postgres psql -U it_tickets it_tickets
@@ -608,4 +628,4 @@ docker compose exec postgres psql -U it_tickets it_tickets
 
 ---
 
-*Documento generato il 15 luglio 2026 — versione corrente del progetto.*
+*Documentazione aggiornata il 16 luglio 2026 — versione corrente del progetto.*
