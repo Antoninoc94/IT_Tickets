@@ -279,8 +279,17 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
 
 export type CloseTicketState = { error?: string } | undefined;
 
-export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
+const CloseSchema = z.object({
+  reason: z.string().trim().min(5, { error: "Descrivi il motivo della chiusura (min. 5 caratteri)." }),
+});
+
+export async function closeTicket(ticketId: string, _state: CloseTicketState, formData: FormData): Promise<CloseTicketState> {
   const user = await getCurrentUser();
+
+  const validated = CloseSchema.safeParse({ reason: formData.get("reason") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
 
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { requester: true } });
   if (!ticket) {
@@ -304,6 +313,15 @@ export async function closeTicket(ticketId: string): Promise<CloseTicketState> {
     where: { id: ticketId },
     data: { status: "CLOSED", closedAt: new Date() },
     include: { requester: true },
+  });
+
+  await prisma.comment.create({
+    data: {
+      ticketId,
+      authorId: user.id,
+      body: `Ticket chiuso. Motivo: ${validated.data.reason}`,
+      internal: false,
+    },
   });
 
   await createEvent(ticketId, user.id, "CLOSED", { from: prevStatus });
