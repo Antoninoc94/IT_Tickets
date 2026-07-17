@@ -28,7 +28,6 @@ export function MobileNav({
 
   const gestioneItems: NavItem[] = isStaff
     ? [
-        { href: "/reports",                label: "Report" },
         { href: "/admin/tags",             label: "Etichette" },
         { href: "/admin/templates",        label: "Modelli" },
         { href: "/admin/categories",       label: "Categorie" },
@@ -66,6 +65,7 @@ export function MobileNav({
         <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
           <MobileLink href="/dashboard" close={() => setOpen(false)}>Dashboard</MobileLink>
           <MobileLink href="/tickets/new" close={() => setOpen(false)}>Nuovo ticket</MobileLink>
+          {isStaff && <MobileLink href="/reports" close={() => setOpen(false)}>Report</MobileLink>}
 
           {gestioneItems.length > 0 && (
             <>

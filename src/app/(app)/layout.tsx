@@ -45,16 +45,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </Link>
 
               {isStaff && (
-                <NavDropdown
-                  label="Gestione"
-                  items={[
-                    { href: "/reports",                label: "Report" },
-                    { href: "/admin/tags",             label: "Etichette" },
-                    { href: "/admin/templates",        label: "Modelli" },
-                    { href: "/admin/categories",       label: "Categorie" },
-                    { href: "/admin/canned-responses", label: "Risposte rapide" },
-                  ]}
-                />
+                <>
+                  <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                    Report
+                  </Link>
+                  <NavDropdown
+                    label="Gestione"
+                    items={[
+                      { href: "/admin/tags",             label: "Etichette" },
+                      { href: "/admin/templates",        label: "Modelli" },
+                      { href: "/admin/categories",       label: "Categorie" },
+                      { href: "/admin/canned-responses", label: "Risposte rapide" },
+                    ]}
+                  />
+                </>
               )}
 
               {isAdmin && (
