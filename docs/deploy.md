@@ -20,12 +20,37 @@ Modifica `.env` con:
 |---|---|---|
 | `POSTGRES_PASSWORD` | `sicura123` | Obbligatoria |
 | `AUTH_SECRET` | `$(openssl rand -base64 32)` | Min. 32 caratteri |
-| `SMTP_HOST` | `mail.azienda.local` | Server SMTP interno |
-| `SMTP_PORT` | `25` | Default 25 |
-| `SMTP_FROM` | `support@azienda.it` | Mittente email |
 | `APP_URL` | `https://ticket.azienda.local` | URL pubblico (usato nei link email) |
 | `ALLOWED_EMAIL_DOMAIN` | `azienda.it` | Lascia vuoto per non limitare la registrazione |
 | `CRON_SECRET` | `$(openssl rand -base64 24)` | Token per le chiamate cron |
+
+### Provider email
+
+Il provider attivo si sceglie da **Impostazioni → Email** nell'interfaccia admin (salvato nel database). Le credenziali rimangono nel `.env` e richiedono un riavvio del server se cambiate.
+
+**SMTP (default)**
+
+| Variabile | Esempio | Note |
+|---|---|---|
+| `SMTP_HOST` | `mail.azienda.local` | Server SMTP interno |
+| `SMTP_PORT` | `25` | Default 25 |
+| `SMTP_SECURE` | `false` | `true` per TLS porta 465 |
+| `SMTP_USER` | *(vuoto)* | Lascia vuoto se il relay non richiede auth |
+| `SMTP_PASS` | *(vuoto)* | |
+| `SMTP_FROM` | `support@azienda.it` | Mittente visualizzato |
+
+**Microsoft Graph API (Office 365)**
+
+Registra un'app in Azure AD con il permesso applicativo `Mail.Send`, poi imposta:
+
+| Variabile | Note |
+|---|---|
+| `GRAPH_TENANT_ID` | ID del tenant Azure AD (GUID) |
+| `GRAPH_CLIENT_ID` | ID applicazione (client) registrata in Azure |
+| `GRAPH_CLIENT_SECRET` | Segreto client dell'app Azure |
+| `GRAPH_SENDER_EMAIL` | Casella mittente (es. `support@azienda.onmicrosoft.com`) |
+
+La pagina **Impostazioni → Email** mostra in tempo reale quali di queste variabili sono configurate, così puoi verificare prima di attivare il provider Graph.
 
 Avvia i servizi:
 
