@@ -17,7 +17,7 @@ export async function createCannedResponse(
   formData: FormData
 ): Promise<CannedResponseState> {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
 
   const validated = CannedResponseSchema.safeParse({
     title: formData.get("title"),
@@ -33,7 +33,7 @@ export async function createCannedResponse(
 
 export async function deleteCannedResponse(id: string) {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
 
   await prisma.cannedResponse.delete({ where: { id } });
   revalidatePath("/admin/canned-responses");

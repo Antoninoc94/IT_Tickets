@@ -5,7 +5,7 @@ import { CannedResponsesClient } from "./canned-responses-client";
 
 export default async function CannedResponsesPage() {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (user.role === "USER") redirect("/dashboard");
 
   const responses = await prisma.cannedResponse.findMany({ orderBy: { title: "asc" } });
 

@@ -12,13 +12,13 @@ const CategorySchema = z.object({
 
 export type CategoryState = { error?: string; success?: boolean } | undefined;
 
-async function assertAdmin() {
+async function assertStaff() {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
 }
 
 export async function createCategory(_state: CategoryState, formData: FormData): Promise<CategoryState> {
-  await assertAdmin();
+  await assertStaff();
 
   const validated = CategorySchema.safeParse({
     name:  formData.get("name"),
@@ -36,7 +36,7 @@ export async function createCategory(_state: CategoryState, formData: FormData):
 }
 
 export async function updateCategory(id: string, _state: CategoryState, formData: FormData): Promise<CategoryState> {
-  await assertAdmin();
+  await assertStaff();
 
   const validated = CategorySchema.safeParse({
     name:  formData.get("name"),
@@ -52,13 +52,13 @@ export async function updateCategory(id: string, _state: CategoryState, formData
 }
 
 export async function toggleCategory(id: string, enabled: boolean): Promise<void> {
-  await assertAdmin();
+  await assertStaff();
   await prisma.category.update({ where: { id }, data: { enabled } });
   revalidatePath("/admin/categories");
 }
 
 export async function deleteCategory(id: string): Promise<CategoryState> {
-  await assertAdmin();
+  await assertStaff();
 
   const count = await prisma.ticket.count({ where: { categoryId: id } });
   if (count > 0) return { error: `Impossibile eliminare: ${count} ticket ${count === 1 ? "usa" : "usano"} questa categoria.` };

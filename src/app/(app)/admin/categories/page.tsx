@@ -5,7 +5,7 @@ import { CategoriesClient } from "./categories-client";
 
 export default async function AdminCategoriesPage() {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (user.role === "USER") redirect("/dashboard");
 
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },

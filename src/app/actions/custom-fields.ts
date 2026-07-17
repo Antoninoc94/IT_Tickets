@@ -7,9 +7,9 @@ import { getCurrentUser } from "@/lib/dal";
 
 export type CustomFieldState = { error?: string; success?: boolean } | undefined;
 
-async function assertAdmin() {
+async function assertStaff() {
   const user = await getCurrentUser();
-  if (user.role !== "ADMIN") throw new Error("Non autorizzato.");
+  if (user.role === "USER") throw new Error("Non autorizzato.");
 }
 
 const FieldSchema = z.object({
@@ -25,7 +25,7 @@ export async function createCustomField(
   _state: CustomFieldState,
   formData: FormData,
 ): Promise<CustomFieldState> {
-  await assertAdmin();
+  await assertStaff();
 
   const validated = FieldSchema.safeParse({
     name:     formData.get("name"),
@@ -58,7 +58,7 @@ export async function createCustomField(
 }
 
 export async function deleteCustomField(id: string): Promise<CustomFieldState> {
-  await assertAdmin();
+  await assertStaff();
   await prisma.customField.delete({ where: { id } });
   revalidatePath("/admin/categories");
   revalidatePath("/tickets/new");

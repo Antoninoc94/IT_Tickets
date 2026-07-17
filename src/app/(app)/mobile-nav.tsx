@@ -28,18 +28,18 @@ export function MobileNav({
 
   const gestioneItems: NavItem[] = isStaff
     ? [
-        { href: "/reports",            label: "Report" },
-        { href: "/admin/tags",         label: "Etichette" },
-        { href: "/admin/templates",    label: "Modelli" },
+        { href: "/reports",                label: "Report" },
+        { href: "/admin/tags",             label: "Etichette" },
+        { href: "/admin/templates",        label: "Modelli" },
+        { href: "/admin/categories",       label: "Categorie" },
+        { href: "/admin/canned-responses", label: "Risposte rapide" },
       ]
     : [];
 
   const adminItems: NavItem[] = isAdmin
     ? [
-        { href: "/admin/users",            label: "Utenti" },
-        { href: "/admin/categories",       label: "Categorie" },
-        { href: "/admin/settings",         label: "Impostazioni" },
-        { href: "/admin/canned-responses", label: "Risposte rapide" },
+        { href: "/admin/users",    label: "Utenti" },
+        { href: "/admin/settings", label: "Impostazioni" },
       ]
     : [];
 
