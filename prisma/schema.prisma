@@ -204,6 +204,9 @@ model Setting {
   // Email master switch — disabling it suppresses all outbound mail
   emailEnabled Boolean @default(true)
 
+  // "smtp" (default) or "graph" (Microsoft Graph API / Office 365)
+  emailProvider String @default("smtp")
+
   // Auto-reminder: if set, sends a reminder email N days after the last activity on open tickets
   reminderDays Int?
 

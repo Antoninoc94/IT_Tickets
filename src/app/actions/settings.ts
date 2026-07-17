@@ -259,10 +259,12 @@ export async function updateEmailFlags(_state: EmailFlagsState, formData: FormDa
     return { error: "Giorni chiusura automatica: inserisci un valore tra 1 e 365, oppure lascia vuoto per disabilitare." };
   }
 
+  const emailProvider = formData.get("emailProvider") === "graph" ? "graph" : "smtp";
+
   await prisma.setting.upsert({
     where: { id: "app" },
-    update: { emailEnabled, digestEnabled, reminderDays, autoCloseDays },
-    create: { id: "app", emailEnabled, digestEnabled, reminderDays, autoCloseDays },
+    update: { emailEnabled, digestEnabled, reminderDays, autoCloseDays, emailProvider },
+    create: { id: "app", emailEnabled, digestEnabled, reminderDays, autoCloseDays, emailProvider },
   });
 
   revalidatePath("/admin/settings");

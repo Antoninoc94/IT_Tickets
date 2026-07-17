@@ -13,6 +13,13 @@ export default async function AdminSettingsPage() {
 
   const settings = await getSettings();
 
+  const graphEnvStatus = {
+    tenantId:     !!process.env.GRAPH_TENANT_ID,
+    clientId:     !!process.env.GRAPH_CLIENT_ID,
+    clientSecret: !!process.env.GRAPH_CLIENT_SECRET,
+    senderEmail:  !!process.env.GRAPH_SENDER_EMAIL,
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
@@ -41,7 +48,7 @@ export default async function AdminSettingsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Email — Impostazioni</h2>
           <p className="mt-0.5 text-xs text-gray-400">Abilita/disabilita le email, promemoria automatici e digest giornaliero.</p>
         </div>
-        <EmailFlagsSection settings={settings} />
+        <EmailFlagsSection settings={settings} graphEnvStatus={graphEnvStatus} />
       </section>
 
       <section className="space-y-4">
