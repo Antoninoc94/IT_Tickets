@@ -28,7 +28,7 @@ export default async function NewTicketPage({
       : Promise.resolve(null),
     prisma.category.findMany({
       where: { enabled: true },
-      orderBy: { position: "asc" },
+      orderBy: { name: "asc" },
       include: { customFields: { orderBy: { position: "asc" } } },
     }),
   ]);

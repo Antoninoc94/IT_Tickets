@@ -156,7 +156,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           distinct: ["requesterLabel"],
           orderBy: { requesterLabel: "asc" },
         }),
-        prisma.category.findMany({ orderBy: { position: "asc" }, select: { id: true, name: true } }),
+        prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
       ])
     : [[], [], [], [], []];
 

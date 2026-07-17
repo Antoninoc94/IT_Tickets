@@ -8,7 +8,7 @@ export default async function AdminCategoriesPage() {
   if (user.role !== "ADMIN") redirect("/dashboard");
 
   const categories = await prisma.category.findMany({
-    orderBy: { position: "asc" },
+    orderBy: { name: "asc" },
     include: {
       _count: { select: { tickets: true } },
       customFields: { orderBy: { position: "asc" } },

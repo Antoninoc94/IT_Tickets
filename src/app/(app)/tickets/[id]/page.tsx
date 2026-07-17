@@ -74,7 +74,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
-    isStaff ? prisma.category.findMany({ where: { enabled: true }, orderBy: { position: "asc" }, select: { id: true, name: true } }) : Promise.resolve([]),
+    isStaff ? prisma.category.findMany({ where: { enabled: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }) : Promise.resolve([]),
   ]);
   const sla = computeSla(ticket, settings);
 

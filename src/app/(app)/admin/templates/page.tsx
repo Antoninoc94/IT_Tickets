@@ -12,7 +12,7 @@ export default async function TemplatesPage() {
       orderBy: { name: "asc" },
       include: { category: { select: { id: true, name: true } } },
     }),
-    prisma.category.findMany({ orderBy: { position: "asc" }, select: { id: true, name: true } }),
+    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   return (

@@ -83,7 +83,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   const [itUsers, dbCategories] = await Promise.all([
     prisma.user.findMany({ where: { role: "IT", active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.category.findMany({ orderBy: { position: "asc" }, select: { id: true, name: true, color: true } }),
+    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, color: true } }),
   ]);
 
   const [tickets, ticketsWithFirstResponse] = await Promise.all([
