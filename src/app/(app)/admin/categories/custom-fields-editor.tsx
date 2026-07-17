@@ -20,6 +20,13 @@ const typeLabels: Record<string, string> = {
   select:   "Selezione",
 };
 
+const typeDescriptions: Record<string, string> = {
+  text:     "Una riga di testo libero — ideale per seriali, codici, nomi.",
+  textarea: "Testo su più righe — per descrizioni o note dettagliate.",
+  number:   "Solo valori numerici — quantità, anni, ID numerici.",
+  select:   "Menu a tendina con opzioni predefinite — garantisce risposte uniformi.",
+};
+
 function FieldItem({ field }: { field: CustomField }) {
   const [isPending, startTransition] = useTransition();
 
@@ -119,6 +126,7 @@ function AddFieldForm({ categoryId }: { categoryId: string }) {
             <option value="number">Numero</option>
             <option value="select">Selezione</option>
           </select>
+          <p className="mt-1 text-xs text-gray-400">{typeDescriptions[type]}</p>
         </div>
       </div>
 
