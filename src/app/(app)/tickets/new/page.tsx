@@ -26,7 +26,11 @@ export default async function NewTicketPage({
     parentId
       ? prisma.ticket.findUnique({ where: { id: parentId }, select: { id: true, title: true } })
       : Promise.resolve(null),
-    prisma.category.findMany({ where: { enabled: true }, orderBy: { position: "asc" }, select: { id: true, name: true, color: true } }),
+    prisma.category.findMany({
+      where: { enabled: true },
+      orderBy: { position: "asc" },
+      include: { customFields: { orderBy: { position: "asc" } } },
+    }),
   ]);
 
   return (

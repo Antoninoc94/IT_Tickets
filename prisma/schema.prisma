@@ -50,6 +50,41 @@ model Category {
   position  Int              @default(0)
   tickets   Ticket[]
   templates TicketTemplate[]
+  customFields CustomField[]
+}
+
+model CustomField {
+  id         String  @id @default(cuid())
+  name       String
+  // text | textarea | number | select
+  type       String  @default("text")
+  // JSON array of strings — only for type=select
+  options    String?
+  required   Boolean @default(false)
+  position   Int     @default(0)
+  // Placeholder / help text shown to the user
+  hint       String?
+
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  values TicketFieldValue[]
+
+  @@index([categoryId])
+}
+
+model TicketFieldValue {
+  id    String @id @default(cuid())
+  value String
+
+  ticket   Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  field    CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId  String
+
+  @@unique([ticketId, fieldId])
+  @@index([ticketId])
 }
 
 model Tag {
@@ -149,6 +184,7 @@ model Ticket {
   events      TicketEvent[]
   views       TicketView[]
   tags        Tag[]
+  fieldValues TicketFieldValue[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt

@@ -19,8 +19,22 @@ function checkFiles(files: FileList | null): string | null {
   return null;
 }
 
+type CustomField = {
+  id: string;
+  name: string;
+  type: string;
+  required: boolean;
+  hint: string | null;
+  options: string | null;
+};
+
 type Tag = { id: string; name: string; color: string };
-type CategoryOption = { id: string; name: string; color: string };
+type CategoryOption = {
+  id: string;
+  name: string;
+  color: string;
+  customFields: CustomField[];
+};
 type Template = {
   id: string;
   name: string;
@@ -30,6 +44,37 @@ type Template = {
   priority: TicketPriority | null;
 };
 type User = { id: string; name: string };
+
+function CustomFieldInput({ field }: { field: CustomField }) {
+  const options =
+    field.type === "select" && field.options
+      ? (JSON.parse(field.options) as string[])
+      : [];
+
+  const base = {
+    name: `cf_${field.id}`,
+    required: field.required,
+    className: "field-input",
+  };
+
+  if (field.type === "textarea") {
+    return <textarea {...base} rows={3} placeholder={field.hint ?? undefined} />;
+  }
+  if (field.type === "number") {
+    return <input type="number" {...base} placeholder={field.hint ?? undefined} />;
+  }
+  if (field.type === "select") {
+    return (
+      <select {...base}>
+        {!field.required && <option value="">— Seleziona —</option>}
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    );
+  }
+  return <input type="text" {...base} placeholder={field.hint ?? undefined} />;
+}
 
 export function NewTicketForm({
   tags,
@@ -57,10 +102,13 @@ export function NewTicketForm({
   const [priority, setPriority] = useState("");
   const [requesterMode, setRequesterMode] = useState<"registered" | "freetext">("registered");
 
+  const selectedCategory = categories.find((c) => c.id === category);
+
   function toggleTag(id: string) {
     setSelectedTags((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -92,6 +140,7 @@ export function NewTicketForm({
 
       <form action={action} className="card space-y-5 p-6">
         {parentTicket && <input type="hidden" name="parentTicketId" value={parentTicket.id} />}
+
         {isStaff && templates.length > 0 && (
           <div>
             <label className="field-label">Usa modello (opzionale)</label>
@@ -212,6 +261,27 @@ export function NewTicketForm({
             </select>
           </div>
         </div>
+
+        {/* Custom fields for the selected category */}
+        {selectedCategory && selectedCategory.customFields.length > 0 && (
+          <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Informazioni aggiuntive — {selectedCategory.name}
+            </p>
+            {selectedCategory.customFields.map((field) => (
+              <div key={field.id}>
+                <label className="field-label">
+                  {field.name}
+                  {field.required && <span className="ml-1 text-red-500">*</span>}
+                </label>
+                {field.hint && field.type !== "text" && (
+                  <p className="mb-1 text-xs text-gray-400">{field.hint}</p>
+                )}
+                <CustomFieldInput field={field} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {isStaff && tags.length > 0 && (
           <div>

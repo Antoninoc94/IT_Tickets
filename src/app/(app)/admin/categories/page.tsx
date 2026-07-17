@@ -9,7 +9,10 @@ export default async function AdminCategoriesPage() {
 
   const categories = await prisma.category.findMany({
     orderBy: { position: "asc" },
-    include: { _count: { select: { tickets: true } } },
+    include: {
+      _count: { select: { tickets: true } },
+      customFields: { orderBy: { position: "asc" } },
+    },
   });
 
   return (

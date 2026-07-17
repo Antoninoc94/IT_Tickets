@@ -50,9 +50,31 @@ export async function GET(request: Request) {
         ],
       } : {}),
     },
-    include: { requester: true, assignee: true, tags: true, category: true },
+    include: {
+      requester: true,
+      assignee: true,
+      tags: true,
+      category: true,
+      fieldValues: {
+        include: { field: { select: { name: true, position: true } } },
+        orderBy: { field: { position: "asc" } },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
+
+  // Collect all distinct custom field names across the result set (ordered by position)
+  const fieldNameSet = new Map<string, number>();
+  for (const t of tickets) {
+    for (const fv of t.fieldValues) {
+      if (!fieldNameSet.has(fv.field.name)) {
+        fieldNameSet.set(fv.field.name, fv.field.position);
+      }
+    }
+  }
+  const customFieldNames = [...fieldNameSet.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([name]) => name);
 
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
 
@@ -60,10 +82,12 @@ export async function GET(request: Request) {
     "ID", "Titolo", "Descrizione", "Richiedente", "Assegnato a",
     "Categoria", "Priorità", "Stato", "Etichette",
     "Creato il", "Aggiornato il", "Risolto il", "Chiuso il",
+    ...customFieldNames,
   ];
 
-  const rows = tickets.map((t) =>
-    [
+  const rows = tickets.map((t) => {
+    const fieldValueMap = new Map(t.fieldValues.map((fv) => [fv.field.name, fv.value]));
+    return [
       t.id,
       t.title,
       t.description,
@@ -77,8 +101,9 @@ export async function GET(request: Request) {
       t.updatedAt.toISOString(),
       t.resolvedAt?.toISOString() ?? "",
       t.closedAt?.toISOString()   ?? "",
-    ].map(esc).join(",")
-  );
+      ...customFieldNames.map((name) => fieldValueMap.get(name) ?? ""),
+    ].map(esc).join(",");
+  });
 
   const csv  = [header.map(esc).join(","), ...rows].join("\n");
   const date = new Date().toISOString().split("T")[0];

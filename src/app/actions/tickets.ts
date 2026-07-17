@@ -54,6 +54,25 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
   }
 
+  // Collect custom field values (inputs named cf_<fieldId>)
+  const cfEntries: { fieldId: string; value: string }[] = [];
+  for (const [key, val] of formData.entries()) {
+    if (key.startsWith("cf_") && typeof val === "string" && val.trim()) {
+      cfEntries.push({ fieldId: key.slice(3), value: val.trim() });
+    }
+  }
+
+  // Validate required custom fields for the selected category
+  const categoryFields = await prisma.customField.findMany({
+    where: { categoryId: validated.data.categoryId },
+    orderBy: { position: "asc" },
+  });
+  for (const field of categoryFields) {
+    if (field.required && !cfEntries.find((e) => e.fieldId === field.id)) {
+      return { error: `Il campo "${field.name}" è obbligatorio.` };
+    }
+  }
+
   const { error: uploadError, saved } = await saveUploadedFiles(formData.getAll("files") as File[]);
   if (uploadError) {
     return { error: uploadError };
@@ -98,6 +117,7 @@ export async function createTicket(_state: NewTicketState, formData: FormData): 
         create: saved.map((f) => ({ ...f, uploadedById: user.id })),
       },
       ...(tagIds.length > 0 ? { tags: { connect: tagIds.map((id) => ({ id })) } } : {}),
+      ...(cfEntries.length > 0 ? { fieldValues: { create: cfEntries } } : {}),
     },
   });
 

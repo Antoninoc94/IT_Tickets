@@ -43,6 +43,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         include: { actor: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
       },
+      fieldValues: {
+        include: { field: { select: { name: true, position: true } } },
+        orderBy: { field: { position: "asc" } },
+      },
     },
   });
 
@@ -111,6 +115,20 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <dd className="mt-0.5 text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</dd>
           </div>
         </dl>
+
+        {ticket.fieldValues.length > 0 && (
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Informazioni aggiuntive</p>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+              {ticket.fieldValues.map((fv) => (
+                <div key={fv.id}>
+                  <dt className="text-xs font-medium text-gray-500">{fv.field.name}</dt>
+                  <dd className="mt-0.5 text-gray-900 dark:text-gray-100">{fv.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </div>
 
       {ticket.tags.length > 0 && (
