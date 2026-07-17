@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useActionState } from "react";
 import { createTicket } from "@/app/actions/tickets";
 import { priorityLabels } from "@/lib/ticket-labels";
@@ -44,6 +44,77 @@ type Template = {
   priority: TicketPriority | null;
 };
 type User = { id: string; name: string };
+
+function UserCombobox({ users, currentUserId }: { users: User[]; currentUserId: string }) {
+  const defaultUser = users.find((u) => u.id === currentUserId);
+  const [query, setQuery] = useState(defaultUser ? `${defaultUser.name} (io)` : "");
+  const [selectedId, setSelectedId] = useState(currentUserId);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = query.trim() === "" || users.find((u) => u.id === selectedId && (u.id === currentUserId ? `${u.name} (io)` : u.name) === query)
+    ? users
+    : users.filter((u) =>
+        (u.id === currentUserId ? `${u.name} (io)` : u.name)
+          .toLowerCase()
+          .includes(query.toLowerCase())
+      );
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        // ripristina il testo al valore selezionato se l'utente ha scritto ma non ha scelto
+        const sel = users.find((u) => u.id === selectedId);
+        if (sel) setQuery(sel.id === currentUserId ? `${sel.name} (io)` : sel.name);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedId, users, currentUserId]);
+
+  function select(u: User) {
+    setSelectedId(u.id);
+    setQuery(u.id === currentUserId ? `${u.name} (io)` : u.name);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input type="hidden" name="requesterId" value={selectedId} />
+      <input
+        type="text"
+        autoComplete="off"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Cerca utente..."
+        className="field-input"
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg text-sm">
+          {filtered.map((u) => {
+            const label = u.id === currentUserId ? `${u.name} (io)` : u.name;
+            return (
+              <li
+                key={u.id}
+                onMouseDown={(e) => { e.preventDefault(); select(u); }}
+                className={`cursor-pointer px-3 py-2 hover:bg-[var(--brand)] hover:text-white ${u.id === selectedId ? "font-medium text-[var(--brand)]" : ""}`}
+              >
+                {label}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {open && filtered.length === 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-gray-400 shadow-lg">
+          Nessun utente trovato
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CustomFieldInput({ field }: { field: CustomField }) {
   const options =
@@ -180,13 +251,7 @@ export function NewTicketForm({
             </div>
             <input type="hidden" name="requesterMode" value={requesterMode} />
             {requesterMode === "registered" ? (
-              <select id="requesterId" name="requesterId" defaultValue={currentUserId} className="field-input">
-                {allUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.id === currentUserId ? `${u.name} (io)` : u.name}
-                  </option>
-                ))}
-              </select>
+              <UserCombobox users={allUsers} currentUserId={currentUserId} />
             ) : (
               <input
                 type="text"
