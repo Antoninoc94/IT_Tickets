@@ -6,6 +6,7 @@ import { StorageSection } from "./storage-section";
 import { GraphicsSection } from "./graphics-section";
 import { SlaSection } from "./sla-section";
 import { EmailFlagsSection } from "./email-flags-section";
+import { WipeForm } from "./wipe-form";
 
 export default async function AdminSettingsPage() {
   const current = await getCurrentUser();
@@ -65,6 +66,17 @@ export default async function AdminSettingsPage() {
           <p className="mt-0.5 text-xs text-gray-400">Spazio usato dagli allegati e pulizia automatica.</p>
         </div>
         <StorageSection />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-red-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-red-500">Zona pericolosa</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Operazioni irreversibili. Usare solo in ambienti di test o prima di un nuovo avvio.</p>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
+          <p className="mb-4 text-sm font-medium text-red-700 dark:text-red-400">Azzera tutti i ticket</p>
+          <WipeForm />
+        </div>
       </section>
     </div>
   );

@@ -42,3 +42,26 @@ export async function cleanupOldAttachments(_state: CleanupState, formData: Form
   revalidatePath("/admin/settings");
   return { message: `Eliminati ${toDelete.length} allegati, liberati ${formatBytes(bytesFreed)}.` };
 }
+
+export type WipeState = { error?: string; message?: string } | undefined;
+
+export async function wipeAllTickets(_state: WipeState, formData: FormData): Promise<WipeState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") return { error: "Non autorizzato." };
+
+  const confirm = formData.get("confirm");
+  if (confirm !== "ELIMINA") return { error: "Parola di conferma errata." };
+
+  // Fetch all attachment storage keys before deleting
+  const attachments = await prisma.attachment.findMany({ select: { storageKey: true } });
+
+  // Delete files from disk (ignore individual errors — file may already be gone)
+  await Promise.allSettled(attachments.map((a) => deleteFile(a.storageKey)));
+
+  // Delete all tickets; cascade removes comments, events, fieldValues, attachment records
+  await prisma.ticket.deleteMany({});
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin/settings");
+  return { message: `Eliminati ${attachments.length} allegati e tutti i ticket.` };
+}
