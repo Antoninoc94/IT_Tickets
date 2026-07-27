@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Tie the Tailwind `dark:` variant to data-theme="dark" instead of
+   prefers-color-scheme, so the theme toggle overrides the OS preference. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #f4f5f7;
   --foreground: #111827;
