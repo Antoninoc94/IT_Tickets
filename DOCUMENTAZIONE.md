@@ -39,7 +39,7 @@ L'applicazione è completamente **self-hosted**: gira in un container Docker e n
 | ORM | Prisma 7 |
 | Database | PostgreSQL 16 |
 | Autenticazione | Cookie di sessione firmati (jose / JWT) |
-| Email | Nodemailer (SMTP interno), template HTML branded |
+| Email | Nodemailer (SMTP interno) oppure Microsoft Graph API (Office 365) |
 | Stile | Tailwind CSS 4 |
 | Container | Docker + Docker Compose |
 
@@ -63,8 +63,10 @@ Il sistema prevede tre ruoli distinti:
 - Cambia stato, priorità e categoria tramite i pannelli di controllo
 - Aggiunge commenti pubblici e **note interne** (non visibili all'utente)
 - Aggiunge/rimuove etichette (tag) direttamente dalla pagina del ticket
-- Accede alla sezione Report e alle sezioni Admin (Etichette, Modelli, Risposte rapide)
-- Apre ticket **per conto di** un altro utente registrato o inserendo un nome libero
+- Accede alla sezione **Report** (link diretto in navigazione)
+- Gestisce **Categorie**: crea, rinomina, colora, abilita/disabilita e definisce i campi personalizzati per categoria
+- Gestisce **Etichette**, **Modelli ticket** e **Risposte rapide**
+- Apre ticket **per conto di** un altro utente registrato (con ricerca per nome) o inserendo un nome libero
 - Chiude ticket con motivazione obbligatoria; riapre ticket chiusi con motivazione
 - Usa azioni in blocco dalla dashboard (cambio stato massivo, assegnazione massiva)
 
@@ -74,10 +76,10 @@ Il sistema prevede tre ruoli distinti:
 - Configura il branding (nome app, colore brand, logo, logo email, favicon)
 - Configura i parametri SLA per priorità (ore per livello + modalità orari lavorativi)
 - Configura i template email (oggetto e corpo)
-- Gestisce le risposte rapide (canned responses)
 - Configura promemoria automatici e digest giornaliero
 - Configura la chiusura automatica dei ticket Risolti (giorni)
 - Esegue la pulizia degli allegati dei ticket chiusi
+- **Zona pericolosa**: elimina tutti i ticket, commenti, allegati ed eventi con conferma digitata ("ELIMINA")
 
 ---
 
@@ -89,13 +91,14 @@ Il sistema prevede tre ruoli distinti:
 - Possibilità di limitare la registrazione a uno specifico dominio email (`ALLOWED_EMAIL_DOMAIN`)
 - **Password temporanea**: gli account creati dall'admin richiedono il cambio password al primo accesso (`mustChangePassword`)
 - Sessione gestita con cookie HTTP-only firmati (`AUTH_SECRET`)
+- **Invalidazione immediata sessione**: se un account viene disabilitato dall'admin, la sessione attiva viene invalidata al prossimo accesso — l'utente viene reindirizzato al logout pulito
 
 ### Dashboard e filtri
 - Tabella ticket con paginazione numerata (10 ticket per pagina)
 - Indicatore badge rosso in header per ticket con nuova attività non letta
 - **Filtri**: stato, priorità, categoria, richiedente, assegnatario, testo libero, intervallo di date
 - **Ordinamento** su qualsiasi colonna (Titolo, Richiedente, Priorità, Stato, Data)
-- **Esportazione CSV** dei ticket filtrati
+- **Esportazione CSV** dei ticket filtrati (inclusi i campi personalizzati come colonne extra)
 - Badge SLA (⚠ in ritardo / ⏱ in scadenza) direttamente sulla riga del ticket
 
 ### Azioni in blocco (bulk actions)
@@ -106,8 +109,9 @@ Il sistema prevede tre ruoli distinti:
 
 ### Gestione ticket
 - Apertura ticket con: titolo, descrizione, categoria, priorità, allegati
+- **Campi personalizzati per categoria**: il form mostra dinamicamente i campi extra definiti dalla categoria selezionata (testo breve, testo lungo, numero, selezione a tendina); i valori vengono salvati con il ticket e inclusi nell'export CSV
 - **Modelli (template)**: pre-compilazione del form da un template configurato
-- Staff può aprire ticket **per conto di** un altro utente (registrato o nome libero)
+- Staff può aprire ticket **per conto di** un altro utente: selettore con ricerca per nome (combobox filtrabile) o inserimento nome libero
 - Cronologia completa degli eventi (creazione, cambi stato, assegnazioni, chiusura, riapertura) — le azioni di sistema mostrano "Sistema" come autore
 - Commenti pubblici e note interne per lo staff
 - **Menzioni** nei commenti (`@nome`) con notifica email all'utente menzionato
@@ -117,7 +121,7 @@ Il sistema prevede tre ruoli distinti:
 - **Riapertura con motivazione obbligatoria**: stesso meccanismo per "Riapri ticket"
 - La chiusura tramite menu a tendina Stato è disabilitata — si usa solo il bottone dedicato
 - Utenti possono chiudere solo ticket in stato **Aperto** (non IN_PROGRESS, WAITING, RESOLVED)
-- **Eliminazione** ticket: solo ADMIN (o richiedente su ticket aperti)
+- **Eliminazione** ticket: solo ADMIN e IT
 
 ### Ticket correlati (cronologia)
 - Ogni ticket può avere un **ticket padre** (`parentTicketId`)
@@ -125,20 +129,29 @@ Il sistema prevede tre ruoli distinti:
 - La pagina di dettaglio mostra un **riquadro "Cronologia ticket"** con padre e figli collegati, con link e badge stato
 - Gli utenti su un ticket chiuso vedono il bottone **"Apri ticket correlato"** per aprire una nuova richiesta collegata
 
+### Categorie e campi personalizzati
+- Categorie **dinamiche**: create, rinominate, colorate e abilitate/disabilitate dallo staff IT o dall'admin
+- Ordine alfabetico automatico ovunque (dashboard, form, report)
+- **Campi personalizzati per categoria** (gestiti da IT e Admin):
+  - Tipi disponibili: `text` (riga singola), `textarea` (testo libero), `number` (numerico), `select` (menu a tendina con opzioni)
+  - Ogni campo ha: nome, tipo, opzioni (per select), obbligatorietà
+  - I campi vengono mostrati dinamicamente nel form di apertura ticket al cambio categoria
+  - I valori sono salvati nel modello `TicketFieldValue` e inclusi nell'export CSV
+
 ### Etichette (tag)
-- Creazione, modifica nome/colore, eliminazione dalla sezione Admin
+- Creazione, modifica nome/colore, eliminazione dalla sezione Gestione
 - Ricerca tag in tempo reale nel pannello di gestione
 - Aggiunta/rimozione tag direttamente dalla pagina di dettaglio del ticket (solo staff)
 - Tag visualizzati sulla dashboard e sul dettaglio come chip colorati
 
 ### Modelli ticket (template)
-- L'admin può creare template con titolo, descrizione, categoria e priorità pre-impostati
+- IT e Admin possono creare template con titolo, descrizione, categoria e priorità pre-impostati
 - Lo staff seleziona un template nel form di apertura ticket per pre-compilarlo
-- Modificabili ed eliminabili da Admin → Gestione → Modelli
+- Modificabili ed eliminabili da Gestione → Modelli
 
 ### Risposte rapide (canned responses)
 - Testi predefiniti riutilizzabili per rispondere velocemente
-- Gestione da Admin → Risposte rapide
+- Gestione da Gestione → Risposte rapide (accessibile a IT e Admin)
 - Inseribili nei commenti tramite dropdown con un click
 
 ### Report
@@ -147,11 +160,12 @@ Il sistema prevede tre ruoli distinti:
 - **Grafico andamento giornaliero** (linea, ultimi 60 giorni o periodo filtrato)
 - **Grafici donut**: distribuzione per stato, per priorità, per categoria
 - **Barre di distribuzione**: stessa ripartizione in formato lista con percentuali
-- **Legenda stati** nella sezione "Distribuzione per stato": spiega la differenza tra Risolto (soluzione applicata, attesa conferma utente) e Chiuso (pratica conclusa)
+- **Legenda stati** nella sezione "Distribuzione per stato"
 - **Tabella per tecnico**: ticket risolti, tempo medio risoluzione, prima risposta media
 - **Ticket per richiedente** e **carico di lavoro IT**
 - **Filtri**: data da/a, categoria, priorità, assegnatario
 - **Stampa** ottimizzata con header stampabile (nome app, data, filtri attivi)
+- Accessibile direttamente dalla navigazione principale (link "Report" visibile allo staff)
 
 ### Branding e impostazioni di sistema (solo ADMIN)
 - Nome applicazione (mostrato in header e nelle email)
@@ -161,16 +175,24 @@ Il sistema prevede tre ruoli distinti:
 - Favicon personalizzata (mostrata nella tab del browser)
 - Configurazione SLA per priorità (ore per URGENT / HIGH / MEDIUM / LOW)
 - Abilitazione/disabilitazione invio email (master switch)
+- Scelta del **provider email**: SMTP interno o Microsoft Graph API (Office 365) — selezionabile dall'UI senza redeploy
 - Template email personalizzabili (oggetto + corpo con variabili `{{placeholder}}`)
 - Promemoria automatico (giorni di inattività prima dell'email al tecnico)
 - **Chiusura automatica ticket Risolti** (giorni prima della chiusura automatica; lascia vuoto per disabilitare)
 - Digest giornaliero per lo staff IT (abilitazione on/off)
 - Pulizia allegati dei ticket chiusi con riepilogo spazio occupato
 
+### Zona pericolosa (solo ADMIN)
+- **Azzera tutti i ticket**: elimina in modo permanente tutti i ticket, commenti, allegati ed eventi del sistema
+- Richiede di digitare `ELIMINA` nel campo di conferma prima che il bottone si abiliti
+- Utenti, categorie, impostazioni e template non vengono toccati
+- Utile per reset di ambienti di test o avvio in produzione dopo un periodo di collaudo
+
 ### Tema visivo
 - **Tre modalità**: Chiaro ☀️ / Scuro 🌙 / Automatico 💻 (segue le preferenze del sistema operativo)
 - Toggle nel header in alto a destra
 - La scelta viene salvata in `localStorage` e applicata prima del render (nessun flash al caricamento)
+- Il tema manuale (Chiaro/Scuro) sovrascrive sempre la preferenza del sistema operativo
 - Tutti i colori usano variabili CSS (`var(--background)`, `var(--surface)`, `var(--foreground)`, `var(--muted)`, `var(--border)`)
 
 ---
@@ -185,16 +207,30 @@ User
 ├── verificationCodeHash / ExpiresAt ← codice di verifica auto-registrazione
 └── relazioni: ticketsCreated, ticketsAssigned, comments, attachments, ticketViews, ticketEvents
 
+Category
+├── id, name, color, enabled, position
+└── relazioni: tickets, customFields
+
+CustomField
+├── id, name, type (text|textarea|number|select), options (JSON, per select), required
+├── position (ordinamento)
+└── categoryId → Category
+
 Ticket
 ├── id, title, description
 ├── status (OPEN|IN_PROGRESS|WAITING_ON_USER|RESOLVED|CLOSED)
 ├── priority (LOW|MEDIUM|HIGH|URGENT)
-├── category (HARDWARE|SOFTWARE|NETWORK|ACCOUNT|OTHER)
+├── categoryId → Category
 ├── requesterId → User, requesterLabel? (nome libero per non registrati)
 ├── assigneeId → User?
 ├── parentTicketId → Ticket? (self-referencing per ticket correlati)
 ├── createdAt, updatedAt, resolvedAt?, closedAt?
-└── relazioni: comments, attachments, events, views, tags (many-to-many), parent, children
+└── relazioni: comments, attachments, events, views, tags (many-to-many), parent, children, fieldValues
+
+TicketFieldValue
+├── id, value (stringa)
+├── ticketId → Ticket
+└── fieldId → CustomField
 
 Comment
 ├── id, body, internal (nota interna se true)
@@ -222,9 +258,11 @@ Setting          ← Riga singleton (id="app") con tutte le impostazioni:
 ├── appName, brandColor
 ├── logoStorageKey?, emailLogoStorageKey?, faviconStorageKey?
 ├── slaUrgentHours?, slaHighHours?, slaMediumHours?, slaLowHours?
+├── slaWorkingHoursOnly, slaWorkStart, slaWorkEnd, slaWorkDays
+├── emailProvider (smtp|graph), emailEnabled
 ├── newTicketEmail*, assignedEmail*, statusChangedEmail*,
 │   newCommentEmail*, mentionEmail* (subject + body template per ciascuno)
-├── emailEnabled, digestEnabled
+├── digestEnabled
 ├── reminderDays?   ← giorni inattività prima del promemoria
 └── autoCloseDays?  ← giorni dopo cui un ticket RESOLVED viene chiuso automaticamente
 ```
@@ -235,16 +273,12 @@ Setting          ← Riga singleton (id="app") con tutte le impostazioni:
 
 Configurate nel file `.env` nella root del progetto:
 
+### Database e app
+
 | Variabile | Obbligatoria | Default | Descrizione |
 |---|---|---|---|
 | `DATABASE_URL` | ✅ | — | Stringa connessione PostgreSQL |
 | `AUTH_SECRET` | ✅ | — | Chiave per firmare i cookie di sessione (min. 32 caratteri) |
-| `SMTP_HOST` | ✅ | — | Hostname del server SMTP interno |
-| `SMTP_PORT` | — | `25` | Porta SMTP |
-| `SMTP_SECURE` | — | `false` | `true` per TLS/SSL |
-| `SMTP_USER` | — | — | Username SMTP (opzionale se no-auth) |
-| `SMTP_PASS` | — | — | Password SMTP |
-| `SMTP_FROM` | ✅ | — | Indirizzo mittente email (es. `support@azienda.it`) |
 | `APP_URL` | ✅ | `http://localhost:3000` | URL pubblico dell'app (usato nei link email) |
 | `ALLOWED_EMAIL_DOMAIN` | — | — | Se impostato, solo email di questo dominio possono registrarsi |
 | `MAX_UPLOAD_SIZE_MB` | — | `25` | Dimensione massima allegati in MB |
@@ -254,17 +288,50 @@ Configurate nel file `.env` nella root del progetto:
 | `POSTGRES_DB` | — | `it_tickets` | Nome database |
 | `CRON_SECRET` | — | — | Token per autenticare le chiamate cron (`x-cron-secret` header) |
 
+### Provider email — SMTP (default)
+
+| Variabile | Obbligatoria | Default | Descrizione |
+|---|---|---|---|
+| `SMTP_HOST` | — | — | Hostname del server SMTP interno |
+| `SMTP_PORT` | — | `25` | Porta SMTP |
+| `SMTP_SECURE` | — | `false` | `true` per TLS/SSL su porta 465 |
+| `SMTP_USER` | — | — | Username SMTP (opzionale se no-auth) |
+| `SMTP_PASS` | — | — | Password SMTP |
+| `SMTP_FROM` | — | — | Indirizzo mittente email (es. `support@azienda.it`) |
+
+### Provider email — Microsoft Graph API (Office 365)
+
+Registrare un'app in Azure AD con il permesso applicativo `Mail.Send` (non delegato) e generare un segreto client.
+
+| Variabile | Descrizione |
+|---|---|
+| `GRAPH_TENANT_ID` | ID del tenant Azure AD (GUID) |
+| `GRAPH_CLIENT_ID` | ID applicazione (client) registrata in Azure |
+| `GRAPH_CLIENT_SECRET` | Segreto client dell'app Azure |
+| `GRAPH_SENDER_EMAIL` | Casella mittente (es. `support@azienda.onmicrosoft.com`) |
+
+Il provider attivo si seleziona dall'interfaccia **Admin → Impostazioni → Email** senza bisogno di redeploy. Le variabili rimangono nel `.env` e richiedono un riavvio del server se modificate.
+
+### Seed (primo avvio)
+
+| Variabile | Esempio | Note |
+|---|---|---|
+| `SEED_ADMIN_EMAIL` | `admin@azienda.it` | Usato solo dal seed |
+| `SEED_ADMIN_PASSWORD` | `ChangeMe123!` | Usato solo dal seed |
+
 **Esempio `.env`:**
 ```env
 DATABASE_URL=postgresql://it_tickets:CAMBIA_QUESTA_PASSWORD@postgres:5432/it_tickets
 AUTH_SECRET=una-stringa-casuale-di-almeno-32-caratteri
-SMTP_HOST=mail.azienda.it
-SMTP_PORT=25
-SMTP_FROM=support@azienda.it
 APP_URL=https://support.azienda.it
 POSTGRES_PASSWORD=CAMBIA_QUESTA_PASSWORD
 CRON_SECRET=un-altro-token-segreto
 ALLOWED_EMAIL_DOMAIN=azienda.it
+SMTP_HOST=mail.azienda.it
+SMTP_PORT=25
+SMTP_FROM=support@azienda.it
+SEED_ADMIN_EMAIL=admin@azienda.it
+SEED_ADMIN_PASSWORD=ChangeMe123!
 ```
 
 ---
@@ -340,7 +407,7 @@ src/
 │   │   │   ├── ticket-table.tsx← Client: tabella interattiva + bulk actions
 │   │   │   └── filter-bar.tsx  ← Filtri avanzati (form GET)
 │   │   ├── tickets/
-│   │   │   ├── new/            ← Form apertura ticket (template, requester, parent)
+│   │   │   ├── new/            ← Form apertura ticket (template, requester, campi custom)
 │   │   │   └── [id]/           ← Dettaglio: commenti, allegati, controlli, cronologia
 │   │   │       ├── ticket-controls.tsx    ← Dropdown stato/priorità/categoria/assegnatario
 │   │   │       ├── close-ticket-button.tsx← Form inline con motivazione obbligatoria
@@ -352,13 +419,19 @@ src/
 │   │   │       ├── attachment-list.tsx    ← Lista allegati con anteprima modale
 │   │   │       └── view-tracker.tsx       ← Traccia ultima visualizzazione
 │   │   ├── reports/            ← Report con KPI, grafici, filtri e stampa
-│   │   ├── admin/
-│   │   │   ├── users/          ← Gestione utenti (ADMIN)
-│   │   │   ├── tags/           ← Gestione etichette (IT+ADMIN)
-│   │   │   ├── templates/      ← Modelli ticket (IT+ADMIN)
-│   │   │   ├── canned-responses/ ← Risposte rapide (ADMIN)
-│   │   │   └── settings/       ← Impostazioni sistema (ADMIN)
-│   │   └── account/            ← Profilo e cambio password utente corrente
+│   │   └── admin/
+│   │       ├── users/          ← Gestione utenti (ADMIN)
+│   │       ├── tags/           ← Gestione etichette (IT+ADMIN)
+│   │       ├── templates/      ← Modelli ticket (IT+ADMIN)
+│   │       ├── categories/     ← Gestione categorie + campi personalizzati (IT+ADMIN)
+│   │       │   ├── page.tsx
+│   │       │   ├── categories-client.tsx
+│   │       │   └── custom-fields-editor.tsx
+│   │       ├── canned-responses/ ← Risposte rapide (IT+ADMIN)
+│   │       └── settings/       ← Impostazioni sistema + zona pericolosa (ADMIN)
+│   │           ├── page.tsx
+│   │           └── wipe-form.tsx  ← Form conferma eliminazione tutti i ticket
+│   ├── account/                ← Profilo e cambio password utente corrente
 │   ├── actions/                ← Server Actions (mutazioni dati)
 │   │   ├── tickets.ts          ← CRUD ticket, bulk, close/reopen con motivazione
 │   │   ├── auth.ts             ← Login, logout
@@ -366,17 +439,20 @@ src/
 │   │   ├── users.ts            ← Gestione utenti (admin)
 │   │   ├── tags.ts             ← CRUD tag
 │   │   ├── templates.ts        ← CRUD modelli ticket
-│   │   ├── canned-responses.ts ← CRUD risposte rapide
+│   │   ├── categories.ts       ← CRUD categorie (IT+ADMIN)
+│   │   ├── custom-fields.ts    ← CRUD campi personalizzati per categoria (IT+ADMIN)
+│   │   ├── canned-responses.ts ← CRUD risposte rapide (IT+ADMIN)
 │   │   ├── settings.ts         ← Salvataggio impostazioni (incluso autoCloseDays)
-│   │   ├── attachments.ts      ← Upload e cancellazione allegati
+│   │   ├── attachments.ts      ← Upload, cancellazione allegati + wipeAllTickets
 │   │   └── account.ts          ← Modifica profilo, cambio password
 │   ├── api/
+│   │   ├── auth/signout/       ← Route Handler logout: cancella cookie e reindirizza
 │   │   ├── attachments/[id]/   ← Download sicuro allegati (auth check)
 │   │   ├── branding/           ← Serving logo, email-logo, favicon
 │   │   ├── cron/
 │   │   │   ├── reminders/      ← Promemoria inattività + chiusura automatica RESOLVED
 │   │   │   └── digest/         ← Digest giornaliero staff IT
-│   │   ├── tickets/export/     ← Export CSV ticket filtrati
+│   │   ├── tickets/export/     ← Export CSV ticket filtrati (inclusi campi personalizzati)
 │   │   └── unread-count/       ← Contatore badge non letti (polling)
 │   ├── login/                  ← Pagina di accesso
 │   ├── register/               ← Auto-registrazione + verifica codice
@@ -389,10 +465,11 @@ src/
 ├── lib/
 │   ├── dal.ts                  ← Data Access Layer (getCurrentUser, guard auth)
 │   ├── prisma.ts               ← Istanza singleton Prisma Client
-│   ├── mail.ts                 ← Invio email via Nodemailer
+│   ├── mail.ts                 ← Invio email: seleziona provider SMTP o Graph
+│   ├── mail-graph.ts           ← Invio via Microsoft Graph API
 │   ├── email-html.ts           ← Builder email HTML (branded: logo, colore, CTA button)
 │   ├── settings.ts             ← Lettura/cache impostazioni + renderTemplate
-│   ├── sla.ts                  ← Calcolo SLA (ok / warning / overdue)
+│   ├── sla.ts                  ← Calcolo SLA (ok / warning / overdue), orari lavorativi
 │   ├── session.ts              ← Gestione cookie sessione (jose JWT)
 │   ├── attachments.ts          ← Salvataggio/cancellazione file su disco
 │   ├── ticket-labels.ts        ← Label, classi CSS e colori per stato/priorità/categoria
@@ -407,9 +484,12 @@ src/
 
 ## 9. Email e notifiche
 
-Le email vengono inviate tramite il server SMTP configurato nelle variabili d'ambiente. Il sistema non utilizza servizi terzi (SendGrid, Mailgun, ecc.).
+Le email possono essere inviate tramite due provider selezionabili dall'interfaccia senza redeploy:
 
-Tutte le email hanno un **layout HTML branded**: header colorato con logo aziendale (o logo email dedicato), corpo in testo formattato, pulsante CTA con link al ticket. Il titolo del ticket appare come link cliccabile nel corpo, non come URL grezzo.
+- **SMTP** — server SMTP interno aziendale; configurato tramite variabili `SMTP_*`
+- **Microsoft Graph API** — Office 365; configurato tramite variabili `GRAPH_*` (registrazione app Azure AD con permesso `Mail.Send`)
+
+Tutte le email hanno un **layout HTML branded**: header colorato con logo aziendale (o logo email dedicato), corpo in testo formattato, pulsante CTA con link al ticket.
 
 ### Trigger di notifica
 
@@ -470,7 +550,7 @@ Lo SLA è calcolato dalla data di creazione del ticket:
 
 Lo stato SLA appare sulla dashboard accanto allo stato del ticket e nella pagina di dettaglio. I ticket Chiusi e Risolti non mostrano lo SLA.
 
-### Orari lavorativi (opzione)
+### Orari lavorativi
 
 Attivando **"Conta solo ore lavorative"** in Impostazioni → SLA, il conteggio esclude notti e giorni non lavorativi:
 
@@ -529,6 +609,15 @@ Un piccolo script inline viene eseguito nel `<head>` **prima del render** del br
 Il pulsante nel header cicla tra: `Automatico 💻 → Scuro 🌙 → Chiaro ☀️ → Automatico`.
 La scelta viene salvata in `localStorage` e applicata immediatamente senza ricaricare la pagina.
 
+Il tema manuale **sovrascrive sempre** la preferenza del sistema operativo. Questo è garantito da:
+
+```css
+/* globals.css */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+```
+
+Questa direttiva Tailwind CSS v4 aggancia la variante `dark:` all'attributo `data-theme="dark"` sull'elemento `<html>` invece del media query `prefers-color-scheme`. In questo modo un utente che ha selezionato "Chiaro" ma ha il sistema in dark mode vede correttamente il tema chiaro.
+
 ### Variabili CSS
 
 ```css
@@ -586,15 +675,7 @@ La pagina dettaglio ticket non si aggiorna automaticamente quando un altro utent
 #### 📋 Vista Kanban
 Alternativa alla tabella della dashboard: board a colonne per stato con drag & drop dei ticket.
 
-#### ⏱ SLA per orari lavorativi
-Attualmente lo SLA conta le ore di calendario (24/7). Per contare solo le ore lavorative:
-- Configurare la finestra lavorativa nelle Impostazioni
-- Modificare `src/lib/sla.ts` per escludere weekend e ore notturne
-
 ### Bassa priorità
-
-#### 🏷️ Categorie personalizzabili
-Le categorie (HARDWARE, SOFTWARE, NETWORK, ACCOUNT, OTHER) sono attualmente fisse. Renderle configurabili richiede un nuovo modello `TicketCategory` e una migration.
 
 #### 🌐 Internazionalizzazione (i18n)
 L'interfaccia è solo in italiano. Per supportare più lingue: adottare `next-intl` ed estrarre le stringhe in file di traduzione.
@@ -639,4 +720,4 @@ docker compose exec postgres psql -U it_tickets it_tickets
 
 ---
 
-*Documentazione aggiornata il 16 luglio 2026 — versione corrente del progetto.*
+*Documentazione aggiornata il 27 luglio 2026 — versione corrente del progetto.*

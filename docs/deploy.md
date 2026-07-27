@@ -8,6 +8,7 @@ IT Tickets è un portale di ticketing interno basato su Next.js 16, Prisma 7 e P
 
 **Ticket**
 - Creazione con titolo, descrizione, categoria, priorità e allegati
+- **Campi personalizzati per categoria**: l'admin (o il team IT) definisce campi extra (testo breve, testo lungo, numero, selezione) che appaiono nel form e vengono salvati con il ticket; inclusi nell'export CSV
 - Stati: Aperto → In lavorazione → In attesa dell'utente → Risolto → Chiuso
 - Priorità: Urgente, Alta, Media, Bassa con indicatore SLA
 - Assegnazione al team IT (cambio automatico di stato in "In lavorazione")
@@ -23,25 +24,27 @@ IT Tickets è un portale di ticketing interno basato su Next.js 16, Prisma 7 e P
 - Download allegati protetto da autenticazione
 
 **Categorie e tag**
-- Categorie dinamiche: create, rinominate, colorate, abilitate/disabilitate e riordinate dall'admin
+- Categorie dinamiche: create, rinominate, colorate e abilitate/disabilitate dallo staff IT o dall'admin; ordine alfabetico automatico
+- Campi personalizzati per categoria: gestibili dallo staff IT e dall'admin
 - Etichette (tag) libere: create e assegnate ai ticket dallo staff
 - Filtro per categoria e tag in dashboard e report
 
 **Modelli e risposte rapide**
-- Modelli ticket: titolo, descrizione, categoria e priorità precompilati
-- Risposte rapide (canned responses): testi predefiniti inseribili nei commenti
+- Modelli ticket: titolo, descrizione, categoria e priorità precompilati; gestibili da IT e Admin
+- Risposte rapide (canned responses): testi predefiniti inseribili nei commenti; gestibili da IT e Admin
 
 **Utenti**
 - Ruoli: `ADMIN`, `IT`, `USER`
 - Registrazione autonoma con verifica email (dominio opzionale)
 - Creazione account da parte dell'admin con password temporanea (l'utente deve cambiarla al primo accesso)
-- Attivazione/disattivazione account
+- Attivazione/disattivazione account (la sessione attiva viene invalidata immediatamente)
 - Modifica nome ed email dallo staff
 
 **Dashboard e report**
 - Dashboard con filtri per stato, priorità, categoria, richiedente, assegnatario, etichetta, testo libero e intervallo date
+- Azioni in blocco: cambio stato e assegnazione massiva
 - Pagina Report (solo staff): grafici donut, trend e barre di distribuzione
-- Export CSV con tutti i filtri attivi
+- Export CSV con tutti i filtri attivi (inclusi i campi personalizzati come colonne extra)
 - Stampa report ottimizzata
 
 **Email**
@@ -51,12 +54,12 @@ IT Tickets è un portale di ticketing interno basato su Next.js 16, Prisma 7 e P
 - Promemoria automatico per ticket inattivi (dopo N giorni configurabili)
 - Chiusura automatica dei ticket Risolti (dopo N giorni configurabili)
 - Digest giornaliero per il team IT
-- Due provider disponibili: SMTP classico e Microsoft Graph API (Office 365), selezionabili dall'UI senza redeploy
+- Due provider disponibili: **SMTP** classico e **Microsoft Graph API** (Office 365), selezionabili dall'UI senza redeploy
 
 **Branding**
 - Nome applicazione personalizzabile
 - Colore brand (hex)
-- Logo aziendale (PNG/JPG/WebP, sostituisce le iniziali in tutta l'app)
+- Logo aziendale (PNG/JPG/WebP)
 - Logo email in versione chiara (per header email su sfondo colorato)
 - Favicon personalizzata (ICO/PNG/SVG)
 
@@ -67,6 +70,7 @@ IT Tickets è un portale di ticketing interno basato su Next.js 16, Prisma 7 e P
 **Archiviazione**
 - Spazio allegati visibile nell'UI
 - Pulizia manuale degli allegati dei ticket chiusi da più di N giorni
+- **Zona pericolosa** (solo Admin): reset completo — elimina tutti i ticket, commenti, eventi e allegati; utenti, categorie e impostazioni restano intatti
 
 ---
 
@@ -249,8 +253,8 @@ I parametri (giorni di inattività, giorni auto-chiusura, digest abilitato) si c
 | Ruolo | Accesso |
 |---|---|
 | `USER` | Crea e segue i propri ticket; commenta; vede solo i propri allegati |
-| `IT` | Vede tutti i ticket; assegna, cambia stato, aggiunge commenti interni; gestisce etichette e modelli |
-| `ADMIN` | Tutto ciò che può fare IT + gestione utenti, categorie, impostazioni globali, risposte rapide |
+| `IT` | Vede e gestisce tutti i ticket; assegna, cambia stato, commenti interni; gestisce categorie, campi personalizzati, etichette, modelli e risposte rapide |
+| `ADMIN` | Tutto ciò che può fare IT + gestione utenti e impostazioni globali (email, SLA, branding, archiviazione, zona pericolosa) |
 
 ---
 
@@ -261,6 +265,9 @@ Gli allegati vengono salvati nel volume `uploads_data`. Il limite per file è co
 In **Admin → Impostazioni → Archiviazione** trovi:
 - Spazio totale occupato dagli allegati
 - Pulsante per eliminare gli allegati dei ticket chiusi da più di N giorni
+
+In **Admin → Impostazioni → Zona pericolosa** trovi:
+- **Azzera tutti i ticket**: elimina tutti i ticket, commenti, allegati ed eventi. Richiede di digitare `ELIMINA` per confermare. Utenti, categorie e impostazioni non vengono toccati.
 
 ---
 
@@ -280,7 +287,7 @@ Dopo il primo avvio, accedi con l'account admin e configura:
 2. **Admin → Impostazioni → SLA** — soglie per priorità, eventualmente ore lavorative
 3. **Admin → Impostazioni → Email** — scegli provider (SMTP o Graph), abilita email, imposta promemoria e digest
 4. **Admin → Impostazioni → Email Template** — verifica e personalizza i template di notifica
-5. **Admin → Categorie** — aggiungi/modifica le categorie di default in base alla tua organizzazione
+5. **Gestione → Categorie** — aggiungi/modifica le categorie e definisci i campi personalizzati per ognuna
 6. **Admin → Utenti** — crea gli account del team IT e assegna i ruoli
-7. **Admin → Modelli** — configura eventuali modelli ticket ricorrenti
-8. **Admin → Risposte rapide** — aggiungi le risposte predefinite per il team IT
+7. **Gestione → Modelli** — configura eventuali modelli ticket ricorrenti
+8. **Gestione → Risposte rapide** — aggiungi le risposte predefinite per il team IT

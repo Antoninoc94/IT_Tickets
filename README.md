@@ -5,23 +5,32 @@ Gestionale ticket IT interno aziendale, costruito con Next.js 16 (App Router) + 
 ## Funzionalità principali
 
 - **Ticket** con stato, priorità, categoria, allegati e tag colorati
+- **Campi personalizzati per categoria** — l'amministratore definisce campi extra (testo, numero, selezione…) che appaiono dinamicamente nel form e vengono salvati con il ticket
 - **Cronologia ticket**: collegamento padre/figlio tra ticket correlati
 - **Tre ruoli**: Administrator · IT · Utente richiedente
 - **Commenti** pubblici e note interne (solo staff); menzioni `@nome` con notifica
-- **Email HTML** con logo aziendale, colore brand e CTA button — via SMTP interno
+- **Email HTML** con logo aziendale, colore brand e CTA button — via SMTP interno o Microsoft Graph API (Office 365)
 - **SLA** configurabile per priorità, con badge ⚠/⏱ su dashboard e dettaglio; modalità **orari lavorativi** (esclude notti e weekend)
-- **Report** con KPI, grafici donut, distribuzione e andamento giornaliero; legenda stati
-- **Chiusura ticket con motivazione obbligatoria** — il motivo è registrato nella cronologia
-- **Chiusura automatica** dei ticket Risolti dopo N giorni senza aggiornamenti (configurabile)
+- **Report** con KPI, grafici donut, distribuzione e andamento giornaliero
 - **Azioni in blocco**: cambio stato e assegnazione massiva dalla dashboard
 - **Template ticket** per pre-compilare titolo, descrizione, categoria e priorità
 - **Risposte rapide** (canned responses) inseribili con un click nei commenti
 - **Branding personalizzabile**: nome app, colore brand, logo, logo email, favicon
 - **Auto-registrazione** con verifica codice via email; password temporanea per account creati dall'admin
-- **Tema** chiaro / scuro / automatico con toggle in header
-- **Export CSV** dei ticket filtrati
-- **Stampa report** ottimizzata (nasconde nav, mostra solo i dati)
+- **Chiusura automatica** dei ticket Risolti dopo N giorni senza aggiornamenti
 - **Digest giornaliero** e promemoria automatici per lo staff IT
+- **Export CSV** dei ticket filtrati (inclusi i campi personalizzati)
+- **Tema** chiaro / scuro / automatico con toggle in header
+- **Stampa report** ottimizzata
+- **Zona pericolosa**: reset completo di tutti i ticket e allegati (solo Admin)
+
+## Ruoli
+
+| Ruolo | Può fare |
+|---|---|
+| `USER` | Aprire e seguire i propri ticket, commentare |
+| `IT` | Gestire tutti i ticket + categorie, campi personalizzati, etichette, modelli, risposte rapide |
+| `ADMIN` | Tutto ciò che può fare IT + gestione utenti e impostazioni di sistema |
 
 ## Setup locale
 
