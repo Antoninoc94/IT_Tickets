@@ -5,12 +5,20 @@ import { decrypt, getSessionCookie } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma/enums";
 
+const INACTIVITY_MS =
+  parseInt(process.env.SESSION_INACTIVITY_HOURS ?? "8", 10) * 60 * 60 * 1000;
+
 export const verifySession = cache(async () => {
   const token = await getSessionCookie();
   const session = await decrypt(token);
 
   if (!session?.userId) {
     redirect("/login");
+  }
+
+  // Secondary inactivity guard for requests that bypass proxy (e.g. direct API calls)
+  if (session.lastActiveAt !== undefined && Date.now() - session.lastActiveAt > INACTIVITY_MS) {
+    redirect("/api/auth/signout");
   }
 
   return session;

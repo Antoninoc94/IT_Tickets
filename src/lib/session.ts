@@ -23,6 +23,7 @@ export type SessionPayload = {
   userId: string;
   role: Role;
   expiresAt: number;
+  lastActiveAt?: number;
 };
 
 export async function encrypt(payload: SessionPayload) {
@@ -45,7 +46,7 @@ export async function decrypt(token: string | undefined): Promise<SessionPayload
 
 export async function createSession(userId: string, role: Role) {
   const expiresAt = Date.now() + SESSION_DURATION_MS;
-  const session = await encrypt({ userId, role, expiresAt });
+  const session = await encrypt({ userId, role, expiresAt, lastActiveAt: Date.now() });
   const cookieStore = await cookies();
 
   cookieStore.set(SESSION_COOKIE, session, {
