@@ -168,14 +168,13 @@ export default function GuidaPage() {
             allo staff IT o rispondere alle loro domande.
           </p>
           <ul className="list-inside list-disc space-y-1.5 text-gray-600">
-            <li>Usa il campo di testo in fondo alla pagina e clicca <strong>Invia commento</strong></li>
+            <li>Usa il campo di testo in fondo alla pagina e clicca <strong>Commenta</strong></li>
             <li>Puoi allegare file anche al commento (screenshot, log…)</li>
             <li>Ogni nuovo commento genera una notifica email alle parti coinvolte</li>
-            <li>Puoi usare <strong>@nome</strong> per menzionare un membro del team IT nel testo</li>
           </ul>
-          <p className="rounded-lg bg-amber-50 px-4 py-3 text-amber-800">
-            Alcuni commenti dello staff sono contrassegnati come <strong>Nota interna</strong>: sono visibili
-            solo al team IT e non ti vengono mostrati.
+          <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
+            <strong>Nota:</strong> potresti non vedere tutte le risposte dello staff — alcune comunicazioni
+            interne tra i tecnici IT non vengono mostrate agli utenti. È normale.
           </p>
         </div>
       </section>
@@ -185,8 +184,10 @@ export default function GuidaPage() {
         <h2 className="text-lg font-semibold text-gray-900">7. Chiudere e riaprire un ticket</h2>
         <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-3">
           <p>
-            Quando il tuo problema è risolto, puoi chiudere il ticket tu stesso cliccando
-            <strong> Chiudi ticket</strong> nella pagina di dettaglio — lo staff potrebbe averlo già fatto.
+            Se hai aperto un ticket e il problema si risolve prima che intervenga lo staff, puoi chiuderlo tu
+            stesso cliccando <strong>Chiudi ticket</strong> — disponibile finché il ticket è in stato{" "}
+            <strong>Aperto</strong>. Una volta che lo staff lo prende in carico, la chiusura viene gestita dal
+            team IT.
           </p>
           <p>
             Se il problema si ripresenta dopo la chiusura, hai due opzioni:
