@@ -5,14 +5,18 @@ import { ProfileForm } from "./profile-form";
 export default async function ProfilePage() {
   const user = await getCurrentUser();
 
+  const fullUser = await import("@/lib/prisma").then(({ prisma }) =>
+    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { phone: true } })
+  );
+
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <h1 className="page-title">Il mio profilo</h1>
-        <p className="page-subtitle">Aggiorna nome e indirizzo email del tuo account.</p>
+        <p className="page-subtitle">Aggiorna le tue informazioni di contatto.</p>
       </div>
 
-      <ProfileForm name={user.name} email={user.email} />
+      <ProfileForm name={user.name} email={user.email} phone={fullUser.phone} />
 
       <div className="card p-6">
         <h2 className="text-sm font-semibold text-gray-900">Sicurezza</h2>

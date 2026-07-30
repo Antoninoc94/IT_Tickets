@@ -83,6 +83,7 @@ export async function changePasswordSelf(_state: ChangePasswordState, formData: 
 const UpdateProfileSchema = z.object({
   name: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
   email: z.email({ error: "Inserisci un'email valida." }),
+  phone: z.string().trim().max(30, { error: "Numero troppo lungo." }).optional(),
 });
 
 export type UpdateProfileState = { error?: string; success?: boolean } | undefined;
@@ -93,6 +94,7 @@ export async function updateProfile(_state: UpdateProfileState, formData: FormDa
   const validated = UpdateProfileSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
+    phone: formData.get("phone") || undefined,
   });
   if (!validated.success) {
     return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
@@ -106,7 +108,7 @@ export async function updateProfile(_state: UpdateProfileState, formData: FormDa
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { name: validated.data.name, email },
+    data: { name: validated.data.name, email, phone: validated.data.phone ?? null },
   });
 
   revalidatePath("/", "layout");

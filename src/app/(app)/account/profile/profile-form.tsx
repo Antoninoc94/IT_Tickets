@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { updateProfile } from "@/app/actions/account";
 
-export function ProfileForm({ name, email }: { name: string; email: string }) {
+export function ProfileForm({ name, email, phone }: { name: string; email: string; phone: string | null }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
 
   return (
@@ -30,6 +30,19 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
             required
             className="field-input max-w-sm"
           />
+        </div>
+        <div>
+          <label htmlFor="phone" className="field-label">Numero di contatto <span className="font-normal text-[var(--muted)]">(opzionale)</span></label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            defaultValue={phone ?? ""}
+            maxLength={30}
+            placeholder="Es. 123  oppure  +39 333 123 4567"
+            className="field-input max-w-sm"
+          />
+          <p className="mt-1 text-xs text-[var(--muted)]">Interno telefonico o cellulare aziendale — visibile allo staff IT sui tuoi ticket.</p>
         </div>
         <div className="flex items-center gap-3">
           <button type="submit" disabled={pending} className="btn-primary">
