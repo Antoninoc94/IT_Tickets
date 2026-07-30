@@ -44,6 +44,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Nuovo ticket
               </Link>
 
+              <Link href="/guida" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                Guida
+              </Link>
+
               {isStaff && (
                 <>
                   <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">

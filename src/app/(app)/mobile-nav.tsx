@@ -65,6 +65,7 @@ export function MobileNav({
         <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
           <MobileLink href="/dashboard" close={() => setOpen(false)}>Dashboard</MobileLink>
           <MobileLink href="/tickets/new" close={() => setOpen(false)}>Nuovo ticket</MobileLink>
+          <MobileLink href="/guida" close={() => setOpen(false)}>Guida</MobileLink>
           {isStaff && <MobileLink href="/reports" close={() => setOpen(false)}>Report</MobileLink>}
 
           {gestioneItems.length > 0 && (
