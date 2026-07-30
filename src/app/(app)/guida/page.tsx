@@ -172,10 +172,6 @@ export default function GuidaPage() {
             <li>Puoi allegare file anche al commento (screenshot, log…)</li>
             <li>Ogni nuovo commento genera una notifica email alle parti coinvolte</li>
           </ul>
-          <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
-            <strong>Nota:</strong> potresti non vedere tutte le risposte dello staff — alcune comunicazioni
-            interne tra i tecnici IT non vengono mostrate agli utenti. È normale.
-          </p>
         </div>
       </section>
 
