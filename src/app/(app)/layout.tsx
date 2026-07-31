@@ -64,11 +64,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <NavDropdown
                     label="Gestione"
                     items={[
+                      { href: "/admin/categories",       label: "Categorie" },
                       { href: "/admin/tags",             label: "Etichette" },
                       { href: "/admin/templates",        label: "Modelli" },
-                      { href: "/admin/categories",       label: "Categorie" },
                       { href: "/admin/canned-responses", label: "Risposte rapide" },
-                      ...(kbEnabled ? [{ href: "/admin/kb", label: "Knowledge Base" }] : []),
+                      ...(kbEnabled ? [{ href: "/admin/kb", label: "Gestione KB" }] : []),
                     ]}
                   />
                 </>
