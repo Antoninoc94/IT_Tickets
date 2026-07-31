@@ -44,6 +44,11 @@ export function LoginForm() {
           Registrati
         </Link>
       </p>
+      <p className="mt-2 text-center text-sm text-gray-500">
+        <Link href="/guida" className="link-brand">
+          Leggi la guida utente
+        </Link>
+      </p>
     </div>
   );
 }

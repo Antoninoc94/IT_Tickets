@@ -44,6 +44,7 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/register",
   "/change-password",
+  "/guida",
   "/api/auth/",     // includes /api/auth/signout — avoid redirect loop
   "/api/branding",  // logo/favicon served on public pages too
 ];
