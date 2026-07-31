@@ -48,9 +48,10 @@ model Category {
   color     String           @default("#6366f1")
   enabled   Boolean          @default(true)
   position  Int              @default(0)
-  tickets   Ticket[]
-  templates TicketTemplate[]
+  tickets      Ticket[]
+  templates    TicketTemplate[]
   customFields CustomField[]
+  kbArticles   KbArticle[]
 }
 
 model CustomField {
@@ -156,6 +157,7 @@ model User {
   attachments     Attachment[]
   ticketEvents    TicketEvent[] @relation("TicketEventActor")
   ticketViews     TicketView[]
+  kbArticles      KbArticle[]
 
   @@index([role])
 }
@@ -253,7 +255,30 @@ model Setting {
   // Daily digest: if enabled, IT staff receive a morning summary of open tickets
   digestEnabled Boolean @default(false)
 
+  // Knowledge Base feature flag
+  kbEnabled Boolean @default(false)
+
   updatedAt DateTime @updatedAt
+}
+
+model KbArticle {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  body      String
+  published Boolean  @default(false)
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([published])
+  @@index([categoryId])
 }
 
 model Comment {

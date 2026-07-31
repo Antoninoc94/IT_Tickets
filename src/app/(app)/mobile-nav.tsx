@@ -8,9 +8,11 @@ type NavItem = { href: string; label: string };
 export function MobileNav({
   isStaff,
   isAdmin,
+  kbEnabled = false,
 }: {
   isStaff: boolean;
   isAdmin: boolean;
+  kbEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -32,6 +34,7 @@ export function MobileNav({
         { href: "/admin/templates",        label: "Modelli" },
         { href: "/admin/categories",       label: "Categorie" },
         { href: "/admin/canned-responses", label: "Risposte rapide" },
+        ...(kbEnabled ? [{ href: "/admin/kb", label: "Knowledge Base" }] : []),
       ]
     : [];
 
@@ -66,6 +69,9 @@ export function MobileNav({
           <MobileLink href="/dashboard" close={() => setOpen(false)}>Dashboard</MobileLink>
           <MobileLink href="/tickets/new" close={() => setOpen(false)}>Nuovo ticket</MobileLink>
           <MobileLink href="/guida" close={() => setOpen(false)}>Guida</MobileLink>
+          {kbEnabled && (
+            <MobileLink href="/kb" close={() => setOpen(false)}>Knowledge Base</MobileLink>
+          )}
           {isStaff && <MobileLink href="/reports" close={() => setOpen(false)}>Report</MobileLink>}
 
           {gestioneItems.length > 0 && (

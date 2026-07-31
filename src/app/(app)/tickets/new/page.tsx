@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/dal";
+import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 import { NewTicketForm } from "./new-ticket-form";
 
@@ -10,6 +11,8 @@ export default async function NewTicketPage({
   const user = await getCurrentUser();
   const isStaff = user.role !== "USER";
   const { parentId } = await searchParams;
+
+  const settings = await getSettings();
 
   const [tags, templates, allUsers, parentTicket, categories] = await Promise.all([
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
@@ -42,6 +45,7 @@ export default async function NewTicketPage({
       isStaff={isStaff}
       parentTicket={parentTicket ?? null}
       categories={categories}
+      kbEnabled={settings.kbEnabled}
     />
   );
 }

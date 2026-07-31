@@ -45,8 +45,10 @@ const PUBLIC_PREFIXES = [
   "/register",
   "/change-password",
   "/guida",
+  "/kb",
   "/api/auth/",     // includes /api/auth/signout — avoid redirect loop
   "/api/branding",  // logo/favicon served on public pages too
+  "/api/kb/",       // KB search — publicly accessible
 ];
 
 export async function proxy(request: NextRequest) {

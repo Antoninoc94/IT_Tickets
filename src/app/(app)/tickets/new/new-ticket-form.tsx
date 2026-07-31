@@ -147,6 +147,53 @@ function CustomFieldInput({ field }: { field: CustomField }) {
   return <input type="text" {...base} placeholder={field.hint ?? undefined} />;
 }
 
+type KbSuggestion = { title: string; slug: string };
+
+function KbSuggestions({ query }: { query: string }) {
+  const [suggestions, setSuggestions] = useState<KbSuggestion[]>([]);
+
+  useEffect(() => {
+    if (query.trim().length < 3) { setSuggestions([]); return; }
+    const timer = setTimeout(() => {
+      fetch(`/api/kb/search?q=${encodeURIComponent(query)}`)
+        .then((r) => r.json())
+        .then((data) => setSuggestions(data.articles ?? []))
+        .catch(() => {});
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_80%,var(--background))] p-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+        Articoli correlati nella Knowledge Base
+      </p>
+      <ul className="space-y-1">
+        {suggestions.map((s) => (
+          <li key={s.slug}>
+            <a
+              href={`/kb/${s.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_8%,transparent)]"
+            >
+              <svg viewBox="0 0 16 16" width={13} height={13} fill="currentColor" className="shrink-0 opacity-70" aria-hidden>
+                <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8Z" />
+              </svg>
+              {s.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-gray-400">
+        Questi articoli potrebbero risolvere il tuo problema. Se non aiutano, procedi con il ticket.
+      </p>
+    </div>
+  );
+}
+
 export function NewTicketForm({
   tags,
   templates,
@@ -155,6 +202,7 @@ export function NewTicketForm({
   isStaff,
   parentTicket,
   categories,
+  kbEnabled = false,
 }: {
   tags: Tag[];
   templates: Template[];
@@ -163,6 +211,7 @@ export function NewTicketForm({
   isStaff: boolean;
   parentTicket: { id: string; title: string } | null;
   categories: CategoryOption[];
+  kbEnabled?: boolean;
 }) {
   const [state, action, pending] = useActionState(createTicket, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -275,6 +324,7 @@ export function NewTicketForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
+          {kbEnabled && <KbSuggestions query={title} />}
         </div>
 
         <div>

@@ -271,6 +271,29 @@ export async function updateEmailFlags(_state: EmailFlagsState, formData: FormDa
   return { success: true };
 }
 
+// ---------------------------------------------------------------------------
+// Knowledge Base toggle
+// ---------------------------------------------------------------------------
+
+export type KbSettingsState = { error?: string; success?: boolean } | undefined;
+
+export async function updateKbSettings(_state: KbSettingsState, formData: FormData): Promise<KbSettingsState> {
+  const user = await getCurrentUser();
+  if (user.role !== "ADMIN") return { error: "Non autorizzato." };
+
+  const kbEnabled = formData.get("kbEnabled") === "on";
+
+  await prisma.setting.upsert({
+    where: { id: "app" },
+    update: { kbEnabled },
+    create: { id: "app", kbEnabled },
+  });
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
 export async function removeFavicon() {
   const user = await getCurrentUser();
   if (user.role !== "ADMIN") {

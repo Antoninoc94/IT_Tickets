@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
+import { getSettings } from "@/lib/settings";
 import { logout } from "@/app/actions/auth";
 import { BrandInline } from "@/app/brand";
 import { UnreadBadge } from "./unread-badge";
@@ -15,11 +16,12 @@ const roleBadgeClass: Record<string, string> = {
 };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
+  const [user, settings] = await Promise.all([getCurrentUser(), getSettings()]);
   if (user.mustChangePassword) redirect("/change-password");
 
-  const isStaff = user.role !== "USER";
-  const isAdmin = user.role === "ADMIN";
+  const isStaff  = user.role !== "USER";
+  const isAdmin  = user.role === "ADMIN";
+  const kbEnabled = settings.kbEnabled;
 
   return (
     <div className="min-h-screen">
@@ -32,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <BrandInline />
             </Link>
 
-            <MobileNav isStaff={isStaff} isAdmin={isAdmin} />
+            <MobileNav isStaff={isStaff} isAdmin={isAdmin} kbEnabled={kbEnabled} />
 
             <div className="hidden items-center gap-4 sm:flex">
               <Link href="/dashboard" className="relative text-sm font-medium text-gray-600 hover:text-gray-900">
@@ -48,6 +50,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 Guida
               </Link>
 
+              {kbEnabled && (
+                <Link href="/kb" className="text-sm font-medium text-gray-600 hover:text-gray-900">
+                  Knowledge Base
+                </Link>
+              )}
+
               {isStaff && (
                 <>
                   <Link href="/reports" className="text-sm font-medium text-gray-600 hover:text-gray-900">
@@ -60,6 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                       { href: "/admin/templates",        label: "Modelli" },
                       { href: "/admin/categories",       label: "Categorie" },
                       { href: "/admin/canned-responses", label: "Risposte rapide" },
+                      ...(kbEnabled ? [{ href: "/admin/kb", label: "Knowledge Base" }] : []),
                     ]}
                   />
                 </>

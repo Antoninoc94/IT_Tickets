@@ -6,6 +6,7 @@ import { StorageSection } from "./storage-section";
 import { GraphicsSection } from "./graphics-section";
 import { SlaSection } from "./sla-section";
 import { EmailFlagsSection } from "./email-flags-section";
+import { KbSection } from "./kb-section";
 import { WipeForm } from "./wipe-form";
 
 export default async function AdminSettingsPage() {
@@ -66,6 +67,14 @@ export default async function AdminSettingsPage() {
           <p className="mt-0.5 text-xs text-gray-400">Spazio usato dagli allegati e pulizia automatica.</p>
         </div>
         <StorageSection />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Knowledge Base</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Abilita o disabilita la sezione Knowledge Base per tutto il portale.</p>
+        </div>
+        <KbSection settings={settings} />
       </section>
 
       <section className="space-y-4">
