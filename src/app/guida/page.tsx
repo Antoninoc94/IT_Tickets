@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { getSettings } from "@/lib/settings";
+import { peekSession } from "@/lib/dal";
 
 export default async function GuidaPage() {
-  const settings = await getSettings();
+  const [settings, session] = await Promise.all([getSettings(), peekSession()]);
+  const backHref = session ? "/dashboard" : "/login";
+  const backLabel = session ? "← Torna al portale" : "← Torna al login";
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -10,8 +13,8 @@ export default async function GuidaPage() {
       <header className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <span className="text-sm font-semibold text-gray-900">{settings.appName}</span>
-          <Link href="/login" className="text-sm text-[var(--brand)] hover:opacity-80">
-            ← Torna al login
+          <Link href={backHref} className="text-sm text-[var(--brand)] hover:opacity-80">
+            {backLabel}
           </Link>
         </div>
       </header>

@@ -39,6 +39,12 @@ export const getCurrentUser = cache(async () => {
   return user;
 });
 
+/** Returns the session payload without redirecting — null if missing or invalid. */
+export const peekSession = cache(async () => {
+  const token = await getSessionCookie();
+  return decrypt(token);
+});
+
 export function requireRole(role: Role, allowed: Role[]) {
   if (!allowed.includes(role)) {
     redirect("/dashboard");
