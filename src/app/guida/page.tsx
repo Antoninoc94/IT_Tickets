@@ -30,17 +30,18 @@ export default async function GuidaPage() {
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Indice</p>
           <ol className="space-y-1 text-sm text-[var(--brand)] [counter-reset:toc]">
             {[
-              ["#cos-e", "Cos'è IT Tickets"],
-              ["#accesso", "Accesso e profilo"],
+              ["#cos-e",        "Cos'è IT Tickets"],
+              ["#accesso",      "Accesso e profilo"],
               ["#nuovo-ticket", "Aprire un nuovo ticket"],
-              ["#priorita", "Priorità"],
-              ["#monitorare", "Monitorare i tuoi ticket"],
-              ["#commenti", "Commenti e aggiornamenti"],
-              ["#chiusura", "Chiudere e riaprire un ticket"],
-              ["#correlati", "Ticket correlati"],
-              ["#allegati", "Allegati"],
-              ["#notifiche", "Notifiche email"],
-              ["#faq", "Domande frequenti"],
+              ["#kb",           "Knowledge Base"],
+              ["#priorita",     "Priorità"],
+              ["#monitorare",   "Monitorare i tuoi ticket"],
+              ["#commenti",     "Commenti e aggiornamenti"],
+              ["#chiusura",     "Chiudere e riaprire un ticket"],
+              ["#correlati",    "Ticket correlati"],
+              ["#allegati",     "Allegati"],
+              ["#notifiche",    "Notifiche email"],
+              ["#faq",          "Domande frequenti"],
             ].map(([href, label], i) => (
               <li key={href} className="flex items-baseline gap-2">
                 <span className="w-5 text-right text-xs text-gray-400">{i + 1}.</span>
@@ -112,16 +113,52 @@ export default async function GuidaPage() {
               <li><strong>Descrizione</strong> — fornisci tutti i dettagli: cosa hai fatto, cosa è successo, eventuali messaggi di errore</li>
               <li><strong>Allegati</strong> — screenshot, log o altri file utili (opzionale)</li>
             </ol>
-            <p className="mt-1 rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
+            <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
               <strong>Suggerimento:</strong> più dettagli fornisci, prima il team IT potrà aiutarti — evita titoli
               generici come &quot;Non funziona niente&quot;.
+            </p>
+            <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
+              <strong>Articoli correlati:</strong> mentre digiti il titolo, il sistema cerca automaticamente nella
+              Knowledge Base articoli che potrebbero già rispondere alla tua domanda. Se trovi la soluzione, non
+              è necessario aprire un ticket.
             </p>
           </div>
         </section>
 
-        {/* 4 – Priorità */}
+        {/* 4 – Knowledge Base */}
+        <section id="kb" className="space-y-3 scroll-mt-20">
+          <h2 className="text-lg font-semibold text-gray-900">4. Knowledge Base</h2>
+          <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-4">
+            <p>
+              La <strong>Knowledge Base</strong> è una raccolta di guide e soluzioni ai problemi più comuni,
+              redatta dal team IT. Prima di aprire un ticket, vale la pena consultarla: potresti trovare la
+              risposta in pochi secondi.
+            </p>
+            <div>
+              <h3 className="mb-2 font-medium text-gray-900">Come accedere</h3>
+              <ul className="list-inside list-disc space-y-1.5 text-gray-600">
+                <li>Clicca su <strong>Knowledge Base</strong> nel menu in cima alla pagina (se visibile)</li>
+                <li>Gli articoli sono raggruppati per categoria e accessibili anche senza aver effettuato l'accesso</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-2 font-medium text-gray-900">Suggerimenti automatici nel form &quot;Nuovo ticket&quot;</h3>
+              <p>
+                Quando inizi a scrivere il titolo di un nuovo ticket, il sistema cerca in tempo reale articoli
+                pertinenti nella Knowledge Base e li mostra direttamente sotto il campo titolo. Se uno degli
+                articoli risolve il problema, puoi aprirlo con un clic senza dover completare il ticket.
+              </p>
+            </div>
+            <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
+              <strong>Nota:</strong> la Knowledge Base potrebbe non essere attiva in tutte le installazioni.
+              Se il link non compare nel menu, la funzione è disabilitata dall'amministratore.
+            </p>
+          </div>
+        </section>
+
+        {/* 5 – Priorità */}
         <section id="priorita" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">4. Priorità</h2>
+          <h2 className="text-lg font-semibold text-gray-900">5. Priorità</h2>
           <div className="card p-5 text-sm space-y-3">
             <p className="leading-relaxed text-gray-700">
               Scegli la priorità in base all'impatto reale sull'attività lavorativa. Una priorità troppo alta
@@ -145,9 +182,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 5 – Monitorare */}
+        {/* 6 – Monitorare */}
         <section id="monitorare" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">5. Monitorare i tuoi ticket</h2>
+          <h2 className="text-lg font-semibold text-gray-900">6. Monitorare i tuoi ticket</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-4">
             <p>
               Dalla <strong>Dashboard</strong> vedi tutti i tuoi ticket attivi. Ogni riga mostra titolo, stato,
@@ -171,16 +208,24 @@ export default async function GuidaPage() {
                 ))}
               </div>
             </div>
-            <p>
-              Clicca sul titolo di un ticket per aprire la pagina di dettaglio, dove trovi la cronologia completa
-              dei commenti e delle modifiche.
-            </p>
+            <div>
+              <h3 className="mb-1 font-medium text-gray-900">Cronologia degli eventi</h3>
+              <p>
+                Clicca sul titolo di un ticket per aprire la pagina di dettaglio. In fondo trovi la sezione
+                <strong> Cronologia</strong>, che registra ogni modifica: apertura, cambi di stato, assegnazioni
+                e chiusura. Accanto all'intestazione è indicato il numero totale di eventi.
+              </p>
+              <p className="mt-2">
+                La cronologia è <strong>compressa per impostazione predefinita</strong>: clicca sull'intestazione
+                &quot;Cronologia&quot; (o sulla freccia ▼ a fianco) per espanderla e vedere l'elenco completo.
+              </p>
+            </div>
           </div>
         </section>
 
-        {/* 6 – Commenti */}
+        {/* 7 – Commenti */}
         <section id="commenti" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">6. Commenti e aggiornamenti</h2>
+          <h2 className="text-lg font-semibold text-gray-900">7. Commenti e aggiornamenti</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-3">
             <p>
               Nella pagina di dettaglio di un ticket puoi aggiungere commenti per fornire ulteriori informazioni
@@ -194,9 +239,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 7 – Chiusura */}
+        {/* 8 – Chiusura */}
         <section id="chiusura" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">7. Chiudere e riaprire un ticket</h2>
+          <h2 className="text-lg font-semibold text-gray-900">8. Chiudere e riaprire un ticket</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-3">
             <p>
               Se hai aperto un ticket e il problema si risolve prima che intervenga lo staff, puoi chiuderlo tu
@@ -214,9 +259,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 8 – Correlati */}
+        {/* 9 – Correlati */}
         <section id="correlati" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">8. Ticket correlati</h2>
+          <h2 className="text-lg font-semibold text-gray-900">9. Ticket correlati</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-2">
             <p>
               I ticket possono essere collegati tra loro in una relazione padre–figlio. Nella pagina di dettaglio,
@@ -230,9 +275,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 9 – Allegati */}
+        {/* 10 – Allegati */}
         <section id="allegati" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">9. Allegati</h2>
+          <h2 className="text-lg font-semibold text-gray-900">10. Allegati</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-2">
             <p>
               Puoi allegare file sia al momento della creazione del ticket sia nei commenti successivi.
@@ -246,9 +291,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 10 – Notifiche */}
+        {/* 11 – Notifiche */}
         <section id="notifiche" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">10. Notifiche email</h2>
+          <h2 className="text-lg font-semibold text-gray-900">11. Notifiche email</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-2">
             <p>
               Il sistema invia notifiche email automatiche nei seguenti casi:
@@ -267,9 +312,9 @@ export default async function GuidaPage() {
           </div>
         </section>
 
-        {/* 11 – FAQ */}
+        {/* 12 – FAQ */}
         <section id="faq" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">11. Domande frequenti</h2>
+          <h2 className="text-lg font-semibold text-gray-900">12. Domande frequenti</h2>
           <div className="card divide-y divide-gray-100 text-sm">
             {[
               {
@@ -295,6 +340,14 @@ export default async function GuidaPage() {
               {
                 q: "Cosa significa 'SLA'?",
                 a: "SLA (Service Level Agreement) è il tempo massimo entro cui il team IT si impegna a risolvere un ticket in base alla priorità. Se il tempo sta per scadere vedrai un avviso giallo; se è scaduto, un avviso rosso.",
+              },
+              {
+                q: "La Knowledge Base non è visibile nel menu — perché?",
+                a: "La Knowledge Base è una funzione opzionale che può essere attivata o disattivata dall'amministratore di sistema. Se il link non compare nel menu, significa che è disabilitata nella tua installazione.",
+              },
+              {
+                q: "La cronologia del ticket è vuota — è normale?",
+                a: "La cronologia è compressa per impostazione predefinita. Clicca sull'intestazione 'Cronologia' nella pagina di dettaglio per espanderla. Il numero accanto al titolo indica quanti eventi sono registrati.",
               },
             ].map(({ q, a }) => (
               <div key={q} className="px-5 py-4">
