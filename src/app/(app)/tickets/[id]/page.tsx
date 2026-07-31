@@ -20,6 +20,7 @@ import { LocalTime } from "@/app/local-time";
 import { renderWithMentions } from "@/lib/render-mentions";
 import { ViewTracker } from "./view-tracker";
 import { TagEditor } from "./tag-editor";
+import { SimilarTickets } from "./similar-tickets";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,6 +35,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       tags: true,
       parent: { select: { id: true, title: true, status: true } },
       children: { select: { id: true, title: true, status: true }, orderBy: { createdAt: "asc" } },
+      mergedInto: { select: { id: true, title: true } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
         include: { author: true, attachments: true },
@@ -70,11 +72,25 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     ...(ticket.assignee ? [ticket.assignee.name] : []),
   ].filter((v, i, a) => a.indexOf(v) === i);
 
-  const [settings, cannedResponses, allTags, categories] = await Promise.all([
+  const titleWords = ticket.title.split(/\s+/).filter((w) => w.length >= 3);
+  const [settings, cannedResponses, allTags, categories, similarTickets] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
     isStaff ? prisma.category.findMany({ where: { enabled: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }) : Promise.resolve([]),
+    isStaff && titleWords.length > 0 && ticket.status !== "CLOSED" && !ticket.mergedIntoId
+      ? prisma.ticket.findMany({
+          where: {
+            id: { not: ticket.id },
+            status: { notIn: ["CLOSED"] },
+            mergedIntoId: null,
+            OR: titleWords.map((word) => ({ title: { contains: word, mode: "insensitive" as const } })),
+          },
+          select: { id: true, title: true, status: true },
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
   ]);
   const sla = computeSla(ticket, settings);
 
@@ -138,6 +154,21 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
         )}
       </div>
+
+      {ticket.mergedInto && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900/40">
+          <p className="text-gray-600 dark:text-gray-400">
+            Questo ticket è stato unito nel ticket principale:{" "}
+            <a href={`/tickets/${ticket.mergedInto.id}`} className="font-medium text-[var(--brand)] hover:underline">
+              {ticket.mergedInto.title}
+            </a>
+          </p>
+        </div>
+      )}
+
+      {isStaff && similarTickets.length > 0 && (
+        <SimilarTickets mainId={ticket.id} tickets={similarTickets} />
+      )}
 
       {ticket.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">

@@ -521,8 +521,54 @@ export async function updateTicketMeta(
 }
 
 // ---------------------------------------------------------------------------
-// Assign ticket
+// Merge duplicate ticket into main ticket (staff only)
 // ---------------------------------------------------------------------------
+
+export type MergeTicketState = { error?: string } | undefined;
+
+export async function mergeTickets(mainId: string, duplicateId: string): Promise<MergeTicketState> {
+  const user = await getCurrentUser();
+  if (user.role === "USER") return { error: "Non autorizzato." };
+  if (mainId === duplicateId) return { error: "Non puoi unire un ticket con se stesso." };
+
+  const [main, duplicate] = await Promise.all([
+    prisma.ticket.findUnique({ where: { id: mainId }, select: { id: true, title: true } }),
+    prisma.ticket.findUnique({ where: { id: duplicateId }, select: { id: true, title: true, status: true, mergedIntoId: true } }),
+  ]);
+
+  if (!main || !duplicate) return { error: "Ticket non trovato." };
+  if (duplicate.mergedIntoId) return { error: "Questo ticket è già stato unito." };
+  if (duplicate.status === "CLOSED") return { error: "Il ticket duplicato è già chiuso." };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.ticket.update({
+      where: { id: duplicateId },
+      data: { status: "CLOSED", closedAt: new Date(), mergedIntoId: mainId },
+    });
+
+    await tx.comment.create({
+      data: {
+        ticketId: mainId,
+        authorId: user.id,
+        body: `Il ticket "${duplicate.title}" è stato unito in questo ticket.`,
+        internal: true,
+      },
+    });
+
+    await tx.ticketEvent.create({
+      data: { ticketId: duplicateId, actorId: user.id, type: "MERGED", meta: { mainId, mainTitle: main.title } },
+    });
+
+    await tx.ticketEvent.create({
+      data: { ticketId: mainId, actorId: user.id, type: "MERGED", meta: { duplicateId, duplicateTitle: duplicate.title, direction: "received" } },
+    });
+  });
+
+  revalidatePath(`/tickets/${mainId}`);
+  revalidatePath(`/tickets/${duplicateId}`);
+  revalidatePath("/dashboard");
+  return {};
+}
 
 // ---------------------------------------------------------------------------
 // Bulk actions (staff only)

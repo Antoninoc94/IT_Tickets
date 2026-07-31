@@ -40,6 +40,7 @@ enum TicketEventType {
   REOPENED
   PRIORITY_CHANGED
   CATEGORY_CHANGED
+  MERGED
 }
 
 model Category {
@@ -181,6 +182,10 @@ model Ticket {
   parentTicketId String?
   parent         Ticket?  @relation("TicketRelation", fields: [parentTicketId], references: [id], onDelete: SetNull)
   children       Ticket[] @relation("TicketRelation")
+
+  mergedIntoId  String?
+  mergedInto    Ticket?  @relation("TicketMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedTickets Ticket[] @relation("TicketMerge")
 
   comments    Comment[]
   attachments Attachment[]
