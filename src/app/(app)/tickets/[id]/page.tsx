@@ -72,7 +72,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     ...(ticket.assignee ? [ticket.assignee.name] : []),
   ].filter((v, i, a) => a.indexOf(v) === i);
 
-  const titleWords = ticket.title.split(/\s+/).filter((w) => w.length >= 3);
+  const titleWords = ticket.title.split(/\s+/).filter((w) => w.length >= 2);
   const [settings, cannedResponses, allTags, categories, similarTickets] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
