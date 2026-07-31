@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { LocalTime } from "@/app/local-time";
 import type { TicketEventType } from "@/generated/prisma/enums";
 
@@ -81,27 +82,51 @@ function eventIcon(type: TicketEventType) {
 }
 
 export function TicketHistory({ events }: { events: EventItem[] }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (events.length === 0) return null;
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold text-gray-900">Cronologia</h2>
-      <ol className="space-y-3">
-        {events.map((e, i) => (
-          <li key={e.id} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              {eventIcon(e.type)}
-              {i < events.length - 1 && <div className="mt-1 w-px flex-1 bg-gray-200" />}
-            </div>
-            <div className="pb-3 pt-0.5">
-              <p className="text-sm text-gray-700">{eventDescription(e)}</p>
-              <p className="text-xs text-gray-400">
-                {e.actor?.name ?? "Sistema"} · <LocalTime date={e.createdAt} />
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <h2 className="text-sm font-semibold text-gray-900">Cronologia</h2>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+          {events.length}
+        </span>
+        <svg
+          viewBox="0 0 16 16"
+          width={14}
+          height={14}
+          fill="currentColor"
+          className={`ml-auto shrink-0 text-gray-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          <path d="M4.427 7.427l3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427z" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <ol className="mt-3 space-y-3">
+          {events.map((e, i) => (
+            <li key={e.id} className="flex gap-3">
+              <div className="flex flex-col items-center">
+                {eventIcon(e.type)}
+                {i < events.length - 1 && <div className="mt-1 w-px flex-1 bg-gray-200" />}
+              </div>
+              <div className="pb-3 pt-0.5">
+                <p className="text-sm text-gray-700">{eventDescription(e)}</p>
+                <p className="text-xs text-gray-400">
+                  {e.actor?.name ?? "Sistema"} · <LocalTime date={e.createdAt} />
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
