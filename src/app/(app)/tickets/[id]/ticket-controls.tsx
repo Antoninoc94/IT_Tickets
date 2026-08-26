@@ -60,7 +60,7 @@ export function TicketControls({
   }
 
   return (
-    <div className="card flex flex-wrap gap-6 p-4">
+    <div className="card flex flex-col gap-4 p-4">
       <div>
         <label className="field-label">Stato</label>
         <select

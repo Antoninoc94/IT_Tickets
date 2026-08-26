@@ -48,3 +48,6 @@ next-env.d.ts
 
 # local file uploads (dev only; production uses a Docker volume)
 /uploads
+
+# local debugging screenshots
+/Screen

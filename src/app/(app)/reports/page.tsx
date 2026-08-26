@@ -227,7 +227,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   ].filter(Boolean).join(" · ");
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Print-only header */}
       <div className="print-only mb-2">
         <p className="text-lg font-semibold text-gray-900">{settings.appName} — Report</p>
