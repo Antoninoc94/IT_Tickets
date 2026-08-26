@@ -4,28 +4,9 @@ import * as z from "zod";
 import argon2 from "argon2";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { sendMail } from "@/lib/mail";
-import { buildEmailHtml } from "@/lib/email-html";
-import { getSettings } from "@/lib/settings";
 import { createSession } from "@/lib/session";
-import {
-  CODE_TTL_MS,
-  codeExpiresAt,
-  generateCode,
-  hashCode,
-  isOnCooldown,
-  verifyCode,
-} from "@/lib/verification-code";
-
-function allowedDomain() {
-  return (process.env.ALLOWED_EMAIL_DOMAIN ?? "").toLowerCase().trim();
-}
-
-function isAllowedEmail(email: string) {
-  const domain = allowedDomain();
-  if (!domain) return true; // no restriction configured
-  return email.toLowerCase().endsWith(`@${domain}`);
-}
+import { isOnCooldown, issueVerificationCode, verifyCode } from "@/lib/verification-code";
+import { allowedEmailDomain, isEmailDomainAllowed } from "@/lib/email-domain";
 
 const RegisterSchema = z.object({
   firstName: z.string().trim().min(2, { error: "Il nome deve avere almeno 2 caratteri." }),
@@ -35,29 +16,6 @@ const RegisterSchema = z.object({
 });
 
 export type RegisterState = { error?: string } | undefined;
-
-async function issueAndSendCode(userId: string, email: string, name: string) {
-  const code = generateCode();
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      verificationCodeHash: await hashCode(code),
-      verificationCodeExpiresAt: codeExpiresAt(),
-      verificationAttempts: 0,
-    },
-  });
-
-  const settings = await getSettings();
-  const subject = `Codice di verifica — ${settings.appName}`;
-  const text = `Ciao ${name},\n\nIl tuo codice di verifica è: ${code}\n\nScade tra ${Math.round(CODE_TTL_MS / 60000)} minuti.\nSe non hai richiesto la registrazione, ignora questa email.`;
-  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
-  const html = buildEmailHtml(text, settings, {
-    ctaUrl: `${appUrl}/register/verify`,
-    ctaLabel: "Vai alla pagina di verifica →",
-  });
-
-  await sendMail(email, subject, text, html);
-}
 
 export async function register(_state: RegisterState, formData: FormData): Promise<RegisterState> {
   const validated = RegisterSchema.safeParse({
@@ -75,8 +33,8 @@ export async function register(_state: RegisterState, formData: FormData): Promi
   const name = `${firstName} ${lastName}`;
   const normalizedEmail = email.toLowerCase();
 
-  const domain = allowedDomain();
-  if (!isAllowedEmail(normalizedEmail)) {
+  const domain = allowedEmailDomain();
+  if (!isEmailDomainAllowed(normalizedEmail)) {
     return { error: `Puoi registrarti solo con un'email aziendale (@${domain}).` };
   }
 
@@ -94,7 +52,7 @@ export async function register(_state: RegisterState, formData: FormData): Promi
         data: { name, email: normalizedEmail, passwordHash, role: "USER" },
       });
 
-  await issueAndSendCode(user.id, user.email, user.name);
+  await issueVerificationCode(user.id, user.email, user.name);
 
   redirect(`/register/verify?email=${encodeURIComponent(user.email)}`);
 }
@@ -170,6 +128,6 @@ export async function resendVerificationCode(_state: ResendState, formData: Form
     return { error: "Attendi qualche secondo prima di richiedere un nuovo codice." };
   }
 
-  await issueAndSendCode(user.id, user.email, user.name);
+  await issueVerificationCode(user.id, user.email, user.name);
   return { success: true };
 }

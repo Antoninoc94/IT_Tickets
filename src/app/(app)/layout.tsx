@@ -18,6 +18,8 @@ const roleBadgeClass: Record<string, string> = {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const [user, settings] = await Promise.all([getCurrentUser(), getSettings()]);
   if (user.mustChangePassword) redirect("/change-password");
+  // A profile email change resets this until the new address is confirmed.
+  if (!user.emailVerifiedAt) redirect(`/register/verify?email=${encodeURIComponent(user.email)}`);
 
   const isStaff  = user.role !== "USER";
   const isAdmin  = user.role === "ADMIN";

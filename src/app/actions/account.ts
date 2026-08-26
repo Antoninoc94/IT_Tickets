@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
+import { issueVerificationCode } from "@/lib/verification-code";
+import { allowedEmailDomain, isEmailDomainAllowed } from "@/lib/email-domain";
 
 const ChangePasswordSchema = z
   .object({
@@ -101,16 +103,36 @@ export async function updateProfile(_state: UpdateProfileState, formData: FormDa
   }
 
   const email = validated.data.email.toLowerCase();
+  const emailChanged = email !== user.email.toLowerCase();
+
+  if (emailChanged) {
+    const domain = allowedEmailDomain();
+    if (!isEmailDomainAllowed(email)) {
+      return { error: `Puoi usare solo un'email aziendale (@${domain}).` };
+    }
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing && existing.id !== user.id) {
     return { error: "Esiste già un account con questa email." };
   }
 
+  if (!emailChanged) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { name: validated.data.name, phone: validated.data.phone ?? null },
+    });
+    revalidatePath("/", "layout");
+    return { success: true };
+  }
+
+  // Changing the email requires proving ownership of the new address before
+  // it takes effect — same code-based flow as self-registration.
   await prisma.user.update({
     where: { id: user.id },
-    data: { name: validated.data.name, email, phone: validated.data.phone ?? null },
+    data: { name: validated.data.name, phone: validated.data.phone ?? null, email, emailVerifiedAt: null },
   });
+  await issueVerificationCode(user.id, email, validated.data.name);
 
-  revalidatePath("/", "layout");
-  return { success: true };
+  redirect(`/register/verify?email=${encodeURIComponent(email)}`);
 }
