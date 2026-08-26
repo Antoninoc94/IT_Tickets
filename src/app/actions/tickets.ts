@@ -600,6 +600,10 @@ export async function bulkAssign(ids: string[], assigneeId: string | null) {
   const user = await getCurrentUser();
   if (user.role === "USER") throw new Error("Non autorizzato.");
   if (ids.length === 0) return;
+  if (assigneeId) {
+    const assignee = await prisma.user.findUnique({ where: { id: assigneeId, role: "IT", active: true } });
+    if (!assignee) throw new Error("Assegnatario non valido.");
+  }
   await prisma.ticket.updateMany({
     where: { id: { in: ids } },
     data: { assigneeId: assigneeId || null, updatedAt: new Date() },
@@ -624,8 +628,11 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
   if (!current) return;
 
   const assignee = assigneeId
-    ? await prisma.user.findUnique({ where: { id: assigneeId } })
+    ? await prisma.user.findUnique({ where: { id: assigneeId, role: "IT", active: true } })
     : null;
+  if (assigneeId && !assignee) {
+    throw new Error("Assegnatario non valido.");
+  }
 
   const autoStart = Boolean(assignee) && current.status === "OPEN";
 
