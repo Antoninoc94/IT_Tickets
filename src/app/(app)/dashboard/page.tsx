@@ -12,6 +12,7 @@ import { FilterBar } from "./filter-bar";
 import { TicketTable, type TicketRow } from "./ticket-table";
 import { getSettings } from "@/lib/settings";
 import { computeSla, formatRemaining } from "@/lib/sla";
+import { unreadTicketConditionSql } from "@/lib/unread";
 import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 const PAGE_SIZE = 25;
@@ -123,18 +124,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       Prisma.sql`
         SELECT DISTINCT t.id
         FROM "Ticket" t
-        WHERE ${user.role === "USER" ? Prisma.sql`t."requesterId" = ${user.id} AND` : Prisma.sql``}
-        EXISTS (
-          SELECT 1 FROM "Comment" c
-          WHERE c."ticketId" = t.id
-            AND ${user.role === "USER" ? Prisma.sql`c.internal = false AND` : Prisma.sql``}
-            c."createdAt" > COALESCE(
-              (SELECT tv."viewedAt" FROM "TicketView" tv
-               WHERE tv."userId" = ${user.id} AND tv."ticketId" = t.id),
-              '1970-01-01'::timestamptz
-            )
-            AND c."authorId" != ${user.id}
-        )
+        WHERE ${unreadTicketConditionSql(user.id, user.role)}
       `
     ),
   ]);
