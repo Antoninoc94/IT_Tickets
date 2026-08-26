@@ -36,7 +36,7 @@ export const getCurrentUser = cache(async () => {
       role: true,
       active: true,
       mustChangePassword: true,
-      emailVerifiedAt: true,
+      pendingEmail: true,
     },
   });
 

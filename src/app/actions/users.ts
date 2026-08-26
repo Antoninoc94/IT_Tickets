@@ -108,9 +108,19 @@ export async function updateUserProfile(
     return { error: "Esiste già un utente con questa email." };
   }
 
+  // An admin setting the email directly is trusted the same way createUser()
+  // already is — also clears any pending self-service change on that account.
   await prisma.user.update({
     where: { id: userId },
-    data: { name: validated.data.name, email },
+    data: {
+      name: validated.data.name,
+      email,
+      emailVerifiedAt: new Date(),
+      pendingEmail: null,
+      pendingEmailCodeHash: null,
+      pendingEmailCodeExpiresAt: null,
+      pendingEmailAttempts: 0,
+    },
   });
 
   revalidatePath("/admin/users");

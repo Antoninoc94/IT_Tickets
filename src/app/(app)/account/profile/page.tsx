@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/dal";
 import { ProfileForm } from "./profile-form";
+import { PendingEmailBanner } from "./pending-email-banner";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -15,6 +16,8 @@ export default async function ProfilePage() {
         <h1 className="page-title">Il mio profilo</h1>
         <p className="page-subtitle">Aggiorna le tue informazioni di contatto.</p>
       </div>
+
+      {user.pendingEmail && <PendingEmailBanner pendingEmail={user.pendingEmail} />}
 
       <ProfileForm name={user.name} email={user.email} phone={fullUser.phone} />
 

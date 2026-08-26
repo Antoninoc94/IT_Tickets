@@ -49,7 +49,14 @@ export function ProfileForm({ name, email, phone }: { name: string; email: strin
             {pending ? "Salvataggio..." : "Salva"}
           </button>
           {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-          {state?.success && <p className="text-sm text-green-600">Profilo aggiornato.</p>}
+          {state?.success && !state.pendingEmailSent && (
+            <p className="text-sm text-green-600">Profilo aggiornato.</p>
+          )}
+          {state?.pendingEmailSent && (
+            <p className="text-sm text-green-600">
+              Profilo aggiornato. Ti abbiamo inviato un codice per confermare la nuova email — inseriscilo qui sopra.
+            </p>
+          )}
         </div>
       </form>
     </div>

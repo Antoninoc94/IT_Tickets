@@ -151,6 +151,14 @@ model User {
   // Wrong guesses against the current verification code; reset whenever a new code is issued.
   verificationAttempts Int @default(0)
 
+  // Profile-initiated email change: the account keeps working under the
+  // current (already verified) `email` until the new address is confirmed
+  // via its own code — `email` itself is never touched until then.
+  pendingEmail               String?
+  pendingEmailCodeHash       String?
+  pendingEmailCodeExpiresAt  DateTime?
+  pendingEmailAttempts       Int       @default(0)
+
   // Consecutive failed login attempts; reset on success. Once it hits the
   // threshold, lockedUntil is set and further logins are rejected until it passes.
   failedLoginAttempts Int       @default(0)

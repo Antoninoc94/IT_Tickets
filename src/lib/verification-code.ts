@@ -60,3 +60,29 @@ export async function issueVerificationCode(userId: string, email: string, name:
 
   await sendMail(email, subject, text, html);
 }
+
+/**
+ * Starts a profile email change: stores `newEmail` as a *pending* address
+ * with its own code, without touching the account's current (already
+ * verified) `email` — the account keeps working normally under the old
+ * address unless and until the new one is confirmed via confirmPendingEmail().
+ */
+export async function issuePendingEmailCode(userId: string, newEmail: string, name: string) {
+  const code = generateCode();
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      pendingEmail: newEmail,
+      pendingEmailCodeHash: await hashCode(code),
+      pendingEmailCodeExpiresAt: codeExpiresAt(),
+      pendingEmailAttempts: 0,
+    },
+  });
+
+  const settings = await getSettings();
+  const subject = `Conferma il cambio email — ${settings.appName}`;
+  const text = `Ciao ${name},\n\nHai richiesto di cambiare l'email del tuo account ${settings.appName} in questo indirizzo.\n\nIl codice di conferma è: ${code}\n\nScade tra ${Math.round(CODE_TTL_MS / 60000)} minuti. Finché non lo confermi, il tuo account continua a funzionare normalmente con l'email attuale.\n\nSe non hai richiesto tu questa modifica, ignora questa email o contatta l'IT.`;
+  const html = buildEmailHtml(text, settings);
+
+  await sendMail(newEmail, subject, text, html);
+}

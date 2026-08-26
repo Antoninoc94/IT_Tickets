@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
-import { issueVerificationCode } from "@/lib/verification-code";
+import { isOnCooldown, issuePendingEmailCode, verifyCode } from "@/lib/verification-code";
 import { allowedEmailDomain, isEmailDomainAllowed } from "@/lib/email-domain";
 
 const ChangePasswordSchema = z
@@ -88,7 +88,7 @@ const UpdateProfileSchema = z.object({
   phone: z.string().trim().max(30, { error: "Numero troppo lungo." }).optional(),
 });
 
-export type UpdateProfileState = { error?: string; success?: boolean } | undefined;
+export type UpdateProfileState = { error?: string; success?: boolean; pendingEmailSent?: boolean } | undefined;
 
 export async function updateProfile(_state: UpdateProfileState, formData: FormData): Promise<UpdateProfileState> {
   const user = await getCurrentUser();
@@ -110,29 +110,111 @@ export async function updateProfile(_state: UpdateProfileState, formData: FormDa
     if (!isEmailDomainAllowed(email)) {
       return { error: `Puoi usare solo un'email aziendale (@${domain}).` };
     }
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing && existing.id !== user.id) {
+      return { error: "Esiste già un account con questa email." };
+    }
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing && existing.id !== user.id) {
-    return { error: "Esiste già un account con questa email." };
-  }
+  // Name/phone take effect immediately regardless of the email change below.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { name: validated.data.name, phone: validated.data.phone ?? null },
+  });
 
   if (!emailChanged) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { name: validated.data.name, phone: validated.data.phone ?? null },
-    });
     revalidatePath("/", "layout");
     return { success: true };
   }
 
-  // Changing the email requires proving ownership of the new address before
-  // it takes effect — same code-based flow as self-registration.
+  // The current (already verified) email keeps working until the new one is
+  // confirmed with its own code — this never touches `email` directly, so a
+  // typo'd or unreachable address can't lock the account out.
+  await issuePendingEmailCode(user.id, email, validated.data.name);
+  revalidatePath("/account/profile");
+  return { success: true, pendingEmailSent: true };
+}
+
+// ---------------------------------------------------------------------------
+// Confirm / cancel a pending email change
+// ---------------------------------------------------------------------------
+
+const ConfirmEmailSchema = z.object({
+  code: z.string().trim().length(6, { error: "Il codice deve avere 6 cifre." }),
+});
+
+const MAX_PENDING_EMAIL_ATTEMPTS = 5;
+
+export type ConfirmEmailState = { error?: string; success?: boolean } | undefined;
+
+export async function confirmEmailChange(_state: ConfirmEmailState, formData: FormData): Promise<ConfirmEmailState> {
+  const user = await getCurrentUser();
+
+  const validated = ConfirmEmailSchema.safeParse({ code: formData.get("code") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Codice non valido." };
+  }
+
+  const fullUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  if (!fullUser.pendingEmail || !fullUser.pendingEmailCodeHash || !fullUser.pendingEmailCodeExpiresAt) {
+    return { error: "Nessun cambio email in sospeso." };
+  }
+  if (fullUser.pendingEmailCodeExpiresAt < new Date()) {
+    return { error: "Il codice è scaduto. Richiedine uno nuovo." };
+  }
+  if (fullUser.pendingEmailAttempts >= MAX_PENDING_EMAIL_ATTEMPTS) {
+    return { error: "Troppi tentativi. Richiedi un nuovo codice." };
+  }
+
+  const valid = await verifyCode(fullUser.pendingEmailCodeHash, validated.data.code);
+  if (!valid) {
+    await prisma.user.update({ where: { id: user.id }, data: { pendingEmailAttempts: { increment: 1 } } });
+    return { error: "Codice non corretto." };
+  }
+
+  // The address may have been claimed by someone else while this was pending.
+  const existing = await prisma.user.findUnique({ where: { email: fullUser.pendingEmail } });
+  if (existing && existing.id !== user.id) {
+    return { error: "Questa email è stata registrata da un altro account nel frattempo." };
+  }
+
   await prisma.user.update({
     where: { id: user.id },
-    data: { name: validated.data.name, phone: validated.data.phone ?? null, email, emailVerifiedAt: null },
+    data: {
+      email: fullUser.pendingEmail,
+      pendingEmail: null,
+      pendingEmailCodeHash: null,
+      pendingEmailCodeExpiresAt: null,
+      pendingEmailAttempts: 0,
+    },
   });
-  await issueVerificationCode(user.id, email, validated.data.name);
 
-  redirect(`/register/verify?email=${encodeURIComponent(email)}`);
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+export async function cancelEmailChange(): Promise<void> {
+  const user = await getCurrentUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { pendingEmail: null, pendingEmailCodeHash: null, pendingEmailCodeExpiresAt: null, pendingEmailAttempts: 0 },
+  });
+  revalidatePath("/account/profile");
+}
+
+export type ResendPendingEmailState = { error?: string; success?: boolean } | undefined;
+
+export async function resendPendingEmailCode(): Promise<ResendPendingEmailState> {
+  const user = await getCurrentUser();
+  const fullUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+
+  if (!fullUser.pendingEmail) {
+    return { error: "Nessun cambio email in sospeso." };
+  }
+  if (isOnCooldown(fullUser.pendingEmailCodeExpiresAt)) {
+    return { error: "Attendi qualche secondo prima di richiedere un nuovo codice." };
+  }
+
+  await issuePendingEmailCode(user.id, fullUser.pendingEmail, fullUser.name);
+  return { success: true };
 }
