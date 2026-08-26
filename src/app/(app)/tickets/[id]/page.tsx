@@ -19,6 +19,7 @@ import { TicketHistory } from "./ticket-history";
 import { LocalTime } from "@/app/local-time";
 import { renderWithMentions } from "@/lib/render-mentions";
 import { ViewTracker } from "./view-tracker";
+import { LiveRefresh } from "./live-refresh";
 import { TagEditor } from "./tag-editor";
 import { SimilarTickets } from "./similar-tickets";
 
@@ -101,6 +102,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ViewTracker ticketId={id} />
+      <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
       <div className="card p-6">
         <div className="mb-3 flex items-start justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
