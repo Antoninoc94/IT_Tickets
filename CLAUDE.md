@@ -19,6 +19,7 @@ npm run dev              # start dev server (localhost:3000)
 npm run build            # production build
 npm run start            # run a production build
 npm run lint              # eslint (flat config, eslint-config-next)
+npm run test              # vitest run — unit tests for server actions
 
 npx prisma migrate dev --name <name>   # create + apply a migration after editing prisma/schema.prisma
 npx prisma generate                     # regenerate the client into src/generated/prisma (run after schema/client changes)
@@ -27,7 +28,15 @@ npx prisma db seed                      # create the initial admin user (SEED_AD
 ./deploy.sh               # on the server: git pull + docker compose down/build/up (migrations run automatically)
 ```
 
-There is no test suite in this repo (no test files, no test runner configured) — don't invent test commands.
+**Tests** (`src/**/*.test.ts`, Vitest) are unit-level, not integration: no real Postgres involved. Every test file
+mocks `@/lib/prisma` (and whichever of `@/lib/dal`, `@/lib/session`, `next/navigation`, `next/cache`, `argon2`,
+`@/lib/verification-code`, `@/lib/mail` the action under test touches) and asserts on the exact `prisma.*.update`
+call shape — see `src/app/actions/account.test.ts` for the pattern (that file's "never writes the real email column
+directly" test is a regression test for a real incident, see the pendingEmail note below). `vitest.config.ts` aliases
+the `server-only` package to a no-op stub so plain server modules can be imported outside Next's RSC pipeline — keep
+that in mind if a new test errors with "This module cannot be imported from a Client Component module." Coverage is
+intentionally thin (login lockout, registration/email verification, the pendingEmail flow, comment ownership) — it
+covers the auth/authorization paths that have actually broken before, not the whole app.
 
 Prisma config lives in `prisma.config.ts` (Prisma 7 style — not the `package.json#prisma` key). The client is generated
 to `src/generated/prisma` (a custom `output`, not `node_modules/.prisma`), so import types/enums from
@@ -57,6 +66,17 @@ reachable (see the Dockerfile builder stage, which uses a dummy one).
   design. Admins can see "Bloccato" and unlock from `/admin/users` (`unlockUserLogin` in `src/app/actions/users.ts`).
   Self-registration's 6-digit email code has the same shape of protection (`User.verificationAttempts`, max 5
   guesses before a fresh code is required).
+- **Profile email changes are pending, never immediate**: `updateProfile` (`src/app/actions/account.ts`) writes a new
+  address to `User.pendingEmail` (+ its own code/attempts fields, `issuePendingEmailCode` in
+  `src/lib/verification-code.ts`) and never touches `email`/`emailVerifiedAt` until `confirmEmailChange` succeeds.
+  **Do not "simplify" this back to writing `email` directly and gating on `emailVerifiedAt`** — an earlier version did
+  exactly that and locked accounts out permanently the moment the new address was unreachable (typo, wrong domain
+  mailbox, etc.), since there was no session-independent way back in. `cancelEmailChange`/`resendPendingEmailCode`
+  and the `PendingEmailBanner` on `/account/profile` are the escape hatches; keep all three if touching this flow.
+
+  An admin can still set a user's email directly and immediately via `updateUserProfile` in `src/app/actions/users.ts`
+  — that path stamps `emailVerifiedAt` fresh and clears any stale pending state, and is also the repair tool if an
+  account ever ends up with a stuck/incorrect email.
 
 **Data layer** — `src/lib/prisma.ts` wraps `PrismaClient` with the `@prisma/adapter-pg` driver adapter and the
 standard dev-mode `globalThis` singleton to survive HMR.
@@ -105,15 +125,15 @@ access to attachments on `internal` comments even when the requester owns the ti
 it stays in sync with the visibility logic in `tickets/[id]/page.tsx` if either changes).
 
 **Knowledge Base** — `/kb` and `/kb/[slug]` are unauthenticated public routes (listed in `proxy.ts`'s
-`PUBLIC_PREFIXES`, gated only by `settings.kbEnabled`). Article bodies are Markdown rendered with `marked.parse()`
-straight into `dangerouslySetInnerHTML` (`src/app/kb/[slug]/page.tsx`, and the admin preview in
-`admin/kb/markdown-editor.tsx`) — **there is no HTML sanitization step**, so anyone who can author a KB article
-(IT or Admin) can inject arbitrary HTML/JS that runs for every visitor of that public page. Treat KB authoring as a
-privileged, staff-only-content surface, not user-generated content, until this gets a sanitizer (e.g. `dompurify`).
+`PUBLIC_PREFIXES`, gated only by `settings.kbEnabled`). Article bodies are Markdown rendered through
+`renderKbMarkdown()` (`src/lib/kb-markdown.ts`: `marked.parse()` piped through `sanitize-html`) before
+`dangerouslySetInnerHTML`, used by both `src/app/kb/[slug]/page.tsx` and the admin preview in
+`admin/kb/markdown-editor.tsx` — **always go through that helper**, never call `marked.parse()` directly into
+`dangerouslySetInnerHTML`, since raw `marked` output passes through any HTML/`<script>` typed into the source.
 
-**CSV export** (`src/app/api/tickets/export/route.ts`) quotes fields but does not neutralize leading `=`/`+`/`-`/`@`
-in user-controlled values (ticket title/description, custom field values) before Excel/Sheets opens them — classic
-CSV/formula-injection surface. Keep this in mind if asked to hunt for injection bugs here.
+**CSV export** (`src/app/api/tickets/export/route.ts`) prefixes any field starting with `=`/`+`/`-`/`@`/tab/CR with a
+leading apostrophe before quoting, to neutralize formula injection in Excel/Sheets for user-controlled values (ticket
+title/description, custom field values). Keep that prefix check if this file's `esc()` helper is touched.
 
 **Routing** — `src/app/(app)/` is the authenticated shell (nav header, role-based links); everything under it assumes
 a session (enforced by `proxy.ts` + the group's `layout.tsx`, which also force-redirects to `/change-password` when
