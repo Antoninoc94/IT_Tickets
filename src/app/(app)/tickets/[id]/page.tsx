@@ -166,8 +166,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
         </div>
 
-        {/* Sidebar — metadata & actions */}
-        <aside className="space-y-4 lg:order-2">
+        {/* Sidebar — metadata & actions. Sticky + independently scrollable on
+            desktop so it stays in view while the main column (comments,
+            history) scrolls past it. */}
+        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1">
           <div className="card space-y-4 p-5">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</p>
