@@ -5,6 +5,9 @@ import argon2 from "argon2";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
+import { sendMail } from "@/lib/mail";
+import { buildEmailHtml } from "@/lib/email-html";
+import { getSettings } from "@/lib/settings";
 import type { Role } from "@/generated/prisma/enums";
 
 const NewUserSchema = z.object({
@@ -178,10 +181,18 @@ export async function resetUserPassword(
   }
 
   const passwordHash = await argon2.hash(validated.data.password);
-  await prisma.user.update({
+  const target = await prisma.user.update({
     where: { id: userId },
     data: { passwordHash, mustChangePassword: true },
   });
+
+  const settings = await getSettings();
+  if (settings.emailEnabled) {
+    const subject = `La tua password è stata reimpostata — ${settings.appName}`;
+    const text = `Ciao ${target.name},\n\nUn amministratore ha reimpostato la password del tuo account ${settings.appName}.\n\nAl prossimo accesso ti verrà chiesto di impostarne una nuova.\n\nSe non ti aspettavi questa modifica, contatta subito l'IT.`;
+    const html = buildEmailHtml(text, settings);
+    await sendMail(target.email, subject, text, html);
+  }
 
   revalidatePath("/admin/users");
   return { success: true };
