@@ -100,7 +100,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const canReopen = ticket.status === "CLOSED" && isStaff;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl space-y-6">
       <ViewTracker ticketId={id} />
       <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
 
@@ -157,8 +157,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               ))}
             </CommentsScrollArea>
           </div>
-
-          <TicketHistory events={ticket.events} />
 
           {ticket.status === "CLOSED" && !isStaff ? (
             <p className="text-center text-sm text-gray-400">Il ticket è chiuso. Non è possibile aggiungere nuovi commenti.</p>
@@ -281,6 +279,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
         </aside>
       </div>
+
+      <TicketHistory events={ticket.events} />
     </div>
   );
 }
