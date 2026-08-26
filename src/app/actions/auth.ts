@@ -17,6 +17,9 @@ export type LoginState =
     }
   | undefined;
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+
 export async function login(_state: LoginState, formData: FormData): Promise<LoginState> {
   const validated = LoginSchema.safeParse({
     email: formData.get("email"),
@@ -35,9 +38,30 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
     return { error: "Email o password errati." };
   }
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+    return { error: `Troppi tentativi falliti. Riprova tra ${minutesLeft} minut${minutesLeft === 1 ? "o" : "i"}.` };
+  }
+
   const valid = await argon2.verify(user.passwordHash, password);
   if (!valid) {
+    const attempts = user.failedLoginAttempts + 1;
+    const lockedOut = attempts >= MAX_LOGIN_ATTEMPTS;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: lockedOut ? 0 : attempts,
+        lockedUntil: lockedOut ? new Date(Date.now() + LOGIN_LOCKOUT_MS) : null,
+      },
+    });
     return { error: "Email o password errati." };
+  }
+
+  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
   }
 
   if (!user.emailVerifiedAt) {

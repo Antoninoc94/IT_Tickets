@@ -43,6 +43,7 @@ async function issueAndSendCode(userId: string, email: string, name: string) {
     data: {
       verificationCodeHash: await hashCode(code),
       verificationCodeExpiresAt: codeExpiresAt(),
+      verificationAttempts: 0,
     },
   });
 
@@ -105,6 +106,8 @@ const VerifySchema = z.object({
 
 export type VerifyState = { error?: string } | undefined;
 
+const MAX_VERIFY_ATTEMPTS = 5;
+
 export async function verifyRegistration(_state: VerifyState, formData: FormData): Promise<VerifyState> {
   const validated = VerifySchema.safeParse({
     email: formData.get("email"),
@@ -126,14 +129,27 @@ export async function verifyRegistration(_state: VerifyState, formData: FormData
     return { error: "Il codice è scaduto. Richiedine uno nuovo." };
   }
 
+  if (user.verificationAttempts >= MAX_VERIFY_ATTEMPTS) {
+    return { error: "Troppi tentativi. Richiedi un nuovo codice." };
+  }
+
   const valid = await verifyCode(user.verificationCodeHash, code);
   if (!valid) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationAttempts: { increment: 1 } },
+    });
     return { error: "Codice non corretto." };
   }
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerifiedAt: new Date(), verificationCodeHash: null, verificationCodeExpiresAt: null },
+    data: {
+      emailVerifiedAt: new Date(),
+      verificationCodeHash: null,
+      verificationCodeExpiresAt: null,
+      verificationAttempts: 0,
+    },
   });
 
   await createSession(user.id, user.role);

@@ -17,7 +17,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const attachment = await prisma.attachment.findUnique({
     where: { id },
-    include: { ticket: { select: { requesterId: true } } },
+    include: {
+      ticket: { select: { requesterId: true } },
+      comment: { select: { internal: true } },
+    },
   });
   if (!attachment) {
     return NextResponse.json({ error: "Allegato non trovato." }, { status: 404 });
@@ -25,7 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const isStaff = session.role !== "USER";
   const isOwner = attachment.ticket.requesterId === session.userId;
-  if (!isStaff && !isOwner) {
+  if (!isStaff && (!isOwner || attachment.comment?.internal)) {
     return NextResponse.json({ error: "Non autorizzato." }, { status: 403 });
   }
 

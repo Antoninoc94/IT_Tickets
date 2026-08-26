@@ -185,11 +185,16 @@ export async function addComment(
     return { error: "Ticket non trovato." };
   }
 
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non autorizzato." };
+  }
+
   if (ticket.status === "CLOSED" && user.role === "USER") {
     return { error: "Non è possibile commentare un ticket chiuso." };
   }
 
-  const isInternal = user.role !== "USER" && validated.data.internal === "on";
+  const isInternal = isStaff && validated.data.internal === "on";
 
   await prisma.comment.create({
     data: {
