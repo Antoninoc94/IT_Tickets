@@ -114,7 +114,9 @@ export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames 
           {editState?.error && <p className="text-xs text-red-600">{editState.error}</p>}
         </form>
       ) : (
-        <p className="whitespace-pre-wrap text-gray-800">{renderWithMentions(comment.body, mentionableNames)}</p>
+        <p className="max-w-prose whitespace-pre-wrap text-[15px] leading-relaxed text-gray-800">
+          {renderWithMentions(comment.body, mentionableNames)}
+        </p>
       )}
 
       {comment.attachments.length > 0 && (

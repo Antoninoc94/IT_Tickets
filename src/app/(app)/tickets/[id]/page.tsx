@@ -118,7 +118,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 {sla.status === "warning" && <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>}
               </div>
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{ticket.description}</p>
+            <p className="max-w-prose whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">{ticket.description}</p>
             {ticket.attachments.length > 0 && (
               <div className="mt-4">
                 <AttachmentList attachments={ticket.attachments} />
@@ -264,8 +264,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </div>
           )}
 
-          {(canClose || canReopen || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
-            <div className="flex flex-col items-stretch gap-2">
+          {(canClose || canReopen || canDelete || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
+            <div className="flex flex-col items-stretch gap-2 border-t border-gray-100 pt-4">
               {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
               {!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id && (
                 <a href={`/tickets/new?parentId=${ticket.id}`} className="btn-secondary text-center text-sm">
@@ -273,15 +273,15 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 </a>
               )}
               {canClose && <CloseTicketButton ticketId={ticket.id} />}
-            </div>
-          )}
-          {canDelete && (
-            <div className="flex justify-end">
-              <DeleteTicketButton ticketId={ticket.id} />
+              {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
             </div>
           )}
 
-          <TicketHistory events={ticket.events} />
+          {ticket.events.length > 0 && (
+            <div className="border-t border-gray-100 pt-4">
+              <TicketHistory events={ticket.events} />
+            </div>
+          )}
         </aside>
       </div>
     </div>

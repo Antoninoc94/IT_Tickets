@@ -28,7 +28,7 @@ export function CommentsScrollArea({ children, commentCount }: { children: React
         const el = e.currentTarget;
         isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
       }}
-      className="max-h-[30vh] space-y-3 overflow-y-auto pr-1"
+      className="max-h-[30vh] space-y-4 overflow-y-auto pr-1"
     >
       {children}
     </div>
