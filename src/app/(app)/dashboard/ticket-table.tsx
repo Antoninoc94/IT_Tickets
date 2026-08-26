@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { bulkUpdateStatus, bulkAssign } from "@/app/actions/tickets";
 import { LocalTime } from "@/app/local-time";
+import { DashboardLiveRefresh } from "./dashboard-live-refresh";
 import {
   priorityBadgeClass,
   priorityLabels,
@@ -102,6 +103,8 @@ export function TicketTable({
 
   return (
     <div>
+      <DashboardLiveRefresh paused={selected.size > 0} />
+
       {/* Floating bulk action bar */}
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-xl">
