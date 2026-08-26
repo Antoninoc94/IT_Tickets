@@ -34,8 +34,12 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
+    // localStorage is only readable client-side; syncing here (instead of a
+    // lazy useState initializer) avoids a server/client hydration mismatch —
+    // the flash-free <head> script already paints the right theme before this runs.
     try {
       const saved = localStorage.getItem("theme") as Theme | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved && CYCLE.includes(saved)) setTheme(saved);
     } catch {}
   }, []);

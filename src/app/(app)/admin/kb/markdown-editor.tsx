@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { renderKbMarkdown } from "@/lib/kb-markdown";
 
 export function MarkdownEditor({
@@ -12,13 +12,7 @@ export function MarkdownEditor({
 }) {
   const [value, setValue] = useState(defaultValue);
   const [tab, setTab] = useState<"write" | "preview">("write");
-  const [preview, setPreview] = useState("");
-
-  useEffect(() => {
-    if (tab === "preview") {
-      setPreview(renderKbMarkdown(value));
-    }
-  }, [tab, value]);
+  const preview = tab === "preview" ? renderKbMarkdown(value) : "";
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border)]">

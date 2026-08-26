@@ -53,12 +53,12 @@ export default async function GuidaPage() {
 
         {/* 1 – Cos'è */}
         <section id="cos-e" className="space-y-3 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-gray-900">1. Cos'è IT Tickets</h2>
+          <h2 className="text-lg font-semibold text-gray-900">1. Cos’è IT Tickets</h2>
           <div className="card p-5 text-sm leading-relaxed text-gray-700 space-y-2">
             <p>
               IT Tickets è il sistema interno per segnalare problemi, richiedere assistenza o avanzare richieste al
               team IT. Sostituisce email e messaggi informali con un canale strutturato che permette a tutti — utenti e
-              staff — di tenere traccia di ogni richiesta dall'apertura alla risoluzione.
+              staff — di tenere traccia di ogni richiesta dall’apertura alla risoluzione.
             </p>
             <p>
               Ogni richiesta diventa un <strong>ticket</strong>: un documento univoco con stato, priorità, categoria
@@ -107,7 +107,7 @@ export default async function GuidaPage() {
               Clicca su <strong>Nuovo ticket</strong> nel menu in cima alla pagina. Compila il modulo:
             </p>
             <ol className="list-inside list-decimal space-y-2 text-gray-600">
-              <li><strong>Titolo</strong> — descrizione breve e chiara del problema (es. <em>"Stampante ufficio 3 non funziona"</em>)</li>
+              <li><strong>Titolo</strong> — descrizione breve e chiara del problema (es. <em>“Stampante ufficio 3 non funziona”</em>)</li>
               <li><strong>Categoria</strong> — scegli quella più adatta (Hardware, Software, Rete…)</li>
               <li><strong>Priorità</strong> — quanto è urgente? Vedi la sezione dedicata qui sotto</li>
               <li><strong>Descrizione</strong> — fornisci tutti i dettagli: cosa hai fatto, cosa è successo, eventuali messaggi di errore</li>
@@ -138,7 +138,7 @@ export default async function GuidaPage() {
               <h3 className="mb-2 font-medium text-gray-900">Come accedere</h3>
               <ul className="list-inside list-disc space-y-1.5 text-gray-600">
                 <li>Clicca su <strong>Knowledge Base</strong> nel menu in cima alla pagina (se visibile)</li>
-                <li>Gli articoli sono raggruppati per categoria e accessibili anche senza aver effettuato l'accesso</li>
+                <li>Gli articoli sono raggruppati per categoria e accessibili anche senza aver effettuato l’accesso</li>
               </ul>
             </div>
             <div>
@@ -151,7 +151,7 @@ export default async function GuidaPage() {
             </div>
             <p className="rounded-lg bg-blue-50 px-4 py-3 text-blue-800">
               <strong>Nota:</strong> la Knowledge Base potrebbe non essere attiva in tutte le installazioni.
-              Se il link non compare nel menu, la funzione è disabilitata dall'amministratore.
+              Se il link non compare nel menu, la funzione è disabilitata dall’amministratore.
             </p>
           </div>
         </section>
@@ -161,7 +161,7 @@ export default async function GuidaPage() {
           <h2 className="text-lg font-semibold text-gray-900">5. Priorità</h2>
           <div className="card p-5 text-sm space-y-3">
             <p className="leading-relaxed text-gray-700">
-              Scegli la priorità in base all'impatto reale sull'attività lavorativa. Una priorità troppo alta
+              Scegli la priorità in base all’impatto reale sull’attività lavorativa. Una priorità troppo alta
               rispetto alla reale urgenza rallenta la gestione dei casi critici.
             </p>
             <div className="space-y-2">
@@ -213,11 +213,11 @@ export default async function GuidaPage() {
               <p>
                 Clicca sul titolo di un ticket per aprire la pagina di dettaglio. In fondo trovi la sezione
                 <strong> Cronologia</strong>, che registra ogni modifica: apertura, cambi di stato, assegnazioni
-                e chiusura. Accanto all'intestazione è indicato il numero totale di eventi.
+                e chiusura. Accanto all’intestazione è indicato il numero totale di eventi.
               </p>
               <p className="mt-2">
-                La cronologia è <strong>compressa per impostazione predefinita</strong>: clicca sull'intestazione
-                &quot;Cronologia&quot; (o sulla freccia ▼ a fianco) per espanderla e vedere l'elenco completo.
+                La cronologia è <strong>compressa per impostazione predefinita</strong>: clicca sull’intestazione
+                &quot;Cronologia&quot; (o sulla freccia ▼ a fianco) per espanderla e vedere l’elenco completo.
               </p>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default async function GuidaPage() {
             </p>
             <p>
               Questa funzione è utile quando un problema ricorrente genera più segnalazioni: lo staff può
-              tenere tutto organizzato in un'unica catena di ticket.
+              tenere tutto organizzato in un’unica catena di ticket.
             </p>
           </div>
         </section>
@@ -306,8 +306,8 @@ export default async function GuidaPage() {
               <li>Chiusura del ticket</li>
             </ul>
             <p>
-              Le email vengono inviate all'indirizzo associato al tuo account. Assicurati che sia aggiornato
-              nel tuo profilo (menu in alto a destra dopo aver effettuato l'accesso).
+              Le email vengono inviate all’indirizzo associato al tuo account. Assicurati che sia aggiornato
+              nel tuo profilo (menu in alto a destra dopo aver effettuato l’accesso).
             </p>
           </div>
         </section>

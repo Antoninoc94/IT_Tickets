@@ -153,6 +153,7 @@ function KbSuggestions({ query }: { query: string }) {
   const [suggestions, setSuggestions] = useState<KbSuggestion[]>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale results before debouncing the fetch below
     if (query.trim().length < 3) { setSuggestions([]); return; }
     const timer = setTimeout(() => {
       fetch(`/api/kb/search?q=${encodeURIComponent(query)}`)

@@ -8,7 +8,6 @@ type AttachmentItem = { id: string; filename: string; sizeBytes: number; mimeTyp
 function isImage(mime: string) { return mime.startsWith("image/"); }
 function isPdf(mime: string) { return mime === "application/pdf"; }
 function isText(mime: string) { return mime === "text/plain"; }
-function isPreviewable(mime: string) { return isImage(mime) || isPdf(mime) || isText(mime); }
 
 function fileIcon(mime: string) {
   if (isImage(mime)) return (

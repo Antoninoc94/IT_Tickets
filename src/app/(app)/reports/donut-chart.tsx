@@ -9,13 +9,18 @@ export function DonutChart({ data, size = 140 }: { data: Slice[]; size?: number 
   const cy = size / 2;
   const circ = 2 * Math.PI * r;
 
-  let offset = 0;
-  const slices = data.filter((d) => d.value > 0).map((d) => {
-    const pct = d.value / total;
-    const dashOffset = -offset * circ;
-    offset += pct;
-    return { ...d, pct, dashOffset };
-  });
+  const { slices } = data.filter((d) => d.value > 0).reduce<{
+    slices: (Slice & { pct: number; dashOffset: number })[];
+    offset: number;
+  }>(
+    (acc, d) => {
+      const pct = d.value / total;
+      acc.slices.push({ ...d, pct, dashOffset: -acc.offset * circ });
+      acc.offset += pct;
+      return acc;
+    },
+    { slices: [], offset: 0 }
+  );
 
   return (
     <div className="flex flex-col items-center gap-3">

@@ -14,6 +14,11 @@ import type { TicketStatus } from "@/generated/prisma/enums";
 
 type SortCol = "updatedAt" | "createdAt" | "title" | "priority" | "status";
 
+function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; sortDir: "asc" | "desc" }) {
+  if (sortCol !== col) return <span className="ml-1 text-xs opacity-30">↕</span>;
+  return <span className="ml-1 text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>;
+}
+
 export type TicketRow = {
   id: string;
   title: string;
@@ -74,11 +79,6 @@ export function TicketTable({
     }
     if (sp.get("sort") === "updatedAt" && !sp.has("dir")) sp.delete("sort");
     return `/dashboard?${sp.toString()}`;
-  }
-
-  function SortIcon({ col }: { col: SortCol }) {
-    if (sortCol !== col) return <span className="ml-1 text-xs opacity-30">↕</span>;
-    return <span className="ml-1 text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
   function handleBulkStatus(status: TicketStatus) {
@@ -161,29 +161,29 @@ export function TicketTable({
               )}
               <th className="px-4 py-3">
                 <Link href={sortHref("title")} className="inline-flex items-center hover:text-gray-900">
-                  Titolo<SortIcon col="title" />
+                  Titolo<SortIcon col="title" sortCol={sortCol} sortDir={sortDir} />
                 </Link>
               </th>
               <th className="hidden px-4 py-3 sm:table-cell">Richiedente</th>
               <th className="hidden px-4 py-3 sm:table-cell">Assegnato a</th>
               <th className="hidden px-4 py-3 sm:table-cell">
                 <Link href={sortHref("priority")} className="inline-flex items-center hover:text-gray-900">
-                  Priorità<SortIcon col="priority" />
+                  Priorità<SortIcon col="priority" sortCol={sortCol} sortDir={sortDir} />
                 </Link>
               </th>
               <th className="px-4 py-3">
                 <Link href={sortHref("status")} className="inline-flex items-center hover:text-gray-900">
-                  Stato<SortIcon col="status" />
+                  Stato<SortIcon col="status" sortCol={sortCol} sortDir={sortDir} />
                 </Link>
               </th>
               <th className="hidden px-4 py-3 text-right sm:table-cell">
                 <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
                   <Link href={sortHref("createdAt")} className="inline-flex items-center hover:text-gray-900">
-                    Creato<SortIcon col="createdAt" />
+                    Creato<SortIcon col="createdAt" sortCol={sortCol} sortDir={sortDir} />
                   </Link>
                   <span className="opacity-40">/</span>
                   <Link href={sortHref("updatedAt")} className="inline-flex items-center hover:text-gray-900">
-                    Modifica<SortIcon col="updatedAt" />
+                    Modifica<SortIcon col="updatedAt" sortCol={sortCol} sortDir={sortDir} />
                   </Link>
                 </span>
               </th>

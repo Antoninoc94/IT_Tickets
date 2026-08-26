@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { assignTicket, updateTicketStatus, updateTicketMeta } from "@/app/actions/tickets";
 import { statusLabels, priorityLabels } from "@/lib/ticket-labels";
 import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
@@ -26,16 +26,38 @@ export function TicketControls({
   itUsers: AssigneeOption[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const normalizedAssigneeId = assigneeId ?? "";
 
+  // Mirror the server-confirmed props into local state so a select can be
+  // updated optimistically; reset it during render (not in an effect) when
+  // revalidated props come back with a new value for this same ticket.
+  const [prevStatus, setPrevStatus] = useState(status);
   const [curStatus, setCurStatus] = useState(status);
-  const [curPriority, setCurPriority] = useState(priority);
-  const [curCategoryId, setCurCategoryId] = useState(categoryId);
-  const [curAssigneeId, setCurAssigneeId] = useState(assigneeId ?? "");
+  if (status !== prevStatus) {
+    setPrevStatus(status);
+    setCurStatus(status);
+  }
 
-  useEffect(() => { setCurStatus(status); }, [status]);
-  useEffect(() => { setCurPriority(priority); }, [priority]);
-  useEffect(() => { setCurCategoryId(categoryId); }, [categoryId]);
-  useEffect(() => { setCurAssigneeId(assigneeId ?? ""); }, [assigneeId]);
+  const [prevPriority, setPrevPriority] = useState(priority);
+  const [curPriority, setCurPriority] = useState(priority);
+  if (priority !== prevPriority) {
+    setPrevPriority(priority);
+    setCurPriority(priority);
+  }
+
+  const [prevCategoryId, setPrevCategoryId] = useState(categoryId);
+  const [curCategoryId, setCurCategoryId] = useState(categoryId);
+  if (categoryId !== prevCategoryId) {
+    setPrevCategoryId(categoryId);
+    setCurCategoryId(categoryId);
+  }
+
+  const [prevAssigneeId, setPrevAssigneeId] = useState(normalizedAssigneeId);
+  const [curAssigneeId, setCurAssigneeId] = useState(normalizedAssigneeId);
+  if (normalizedAssigneeId !== prevAssigneeId) {
+    setPrevAssigneeId(normalizedAssigneeId);
+    setCurAssigneeId(normalizedAssigneeId);
+  }
 
   return (
     <div className="card flex flex-wrap gap-6 p-4">
@@ -58,7 +80,7 @@ export function TicketControls({
             ))}
         </select>
         {curStatus === "CLOSED" && (
-          <p className="mt-1 text-xs text-gray-400">Usa "Riapri ticket" per cambiare stato.</p>
+          <p className="mt-1 text-xs text-gray-400">Usa “Riapri ticket” per cambiare stato.</p>
         )}
       </div>
 
