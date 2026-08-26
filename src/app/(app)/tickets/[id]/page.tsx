@@ -16,10 +16,9 @@ import { DeleteTicketButton } from "./delete-ticket-button";
 import { CloseTicketButton } from "./close-ticket-button";
 import { ReopenTicketButton } from "./reopen-ticket-button";
 import { TicketHistory } from "./ticket-history";
-import { LocalTime } from "@/app/local-time";
-import { renderWithMentions } from "@/lib/render-mentions";
 import { ViewTracker } from "./view-tracker";
 import { LiveRefresh } from "./live-refresh";
+import { CommentItem } from "./comment-item";
 import { TagEditor } from "./tag-editor";
 import { SimilarTickets } from "./similar-tickets";
 
@@ -39,7 +38,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       mergedInto: { select: { id: true, title: true } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
-        include: { author: true, attachments: true },
+        include: { author: true, attachments: true, deletedBy: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
       },
       events: {
@@ -253,32 +252,17 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           Commenti {visibleComments.length > 0 && <span className="text-gray-400">({visibleComments.length})</span>}
         </h2>
         {visibleComments.length === 0 && <p className="text-sm text-gray-500">Nessun commento.</p>}
-        {visibleComments.map((comment) => (
-          <div
-            key={comment.id}
-            className={`rounded-xl border p-4 text-sm shadow-sm ${
-              comment.internal ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
-            }`}
-          >
-            <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
-              <span className="font-medium text-gray-700">
-                {comment.author.name}
-                {comment.internal && (
-                  <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                    Nota interna
-                  </span>
-                )}
-              </span>
-              <LocalTime date={comment.createdAt} />
-            </div>
-            <p className="whitespace-pre-wrap text-gray-800">{renderWithMentions(comment.body, mentionableNames)}</p>
-            {comment.attachments.length > 0 && (
-              <div className="mt-2">
-                <AttachmentList attachments={comment.attachments} />
-              </div>
-            )}
-          </div>
-        ))}
+        <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+          {visibleComments.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              currentUserId={user.id}
+              isAdmin={user.role === "ADMIN"}
+              mentionableNames={mentionableNames}
+            />
+          ))}
+        </div>
       </div>
 
       <TicketHistory events={ticket.events} />

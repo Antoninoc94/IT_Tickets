@@ -170,6 +170,7 @@ model User {
   ticketsCreated  Ticket[]      @relation("TicketRequester")
   ticketsAssigned Ticket[]      @relation("TicketAssignee")
   comments        Comment[]
+  deletedComments Comment[]     @relation("CommentDeletedBy")
   attachments     Attachment[]
   ticketEvents    TicketEvent[] @relation("TicketEventActor")
   ticketViews     TicketView[]
@@ -305,6 +306,17 @@ model Comment {
   id       String @id @default(cuid())
   body     String
   internal Boolean @default(false)
+
+  // Set when the author edits within the 5-minute window; the label
+  // "(modificato)" is shown whenever this is non-null, permanently.
+  editedAt DateTime?
+
+  // Soft delete: body is kept in the database (not destroyed) but the UI
+  // shows a "Commento rimosso da X il Y" placeholder instead. Settable by
+  // the author within the same 5-minute edit window, or by an Admin anytime.
+  deletedAt   DateTime?
+  deletedBy   User?     @relation("CommentDeletedBy", fields: [deletedById], references: [id])
+  deletedById String?
 
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   ticketId String

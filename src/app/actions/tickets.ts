@@ -260,6 +260,74 @@ export async function addComment(
 }
 
 // ---------------------------------------------------------------------------
+// Edit / delete a comment
+// ---------------------------------------------------------------------------
+
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+
+const EditCommentSchema = z.object({
+  body: z.string().trim().min(1, { error: "Il commento non può essere vuoto." }),
+});
+
+export type EditCommentState = { error?: string; success?: boolean } | undefined;
+
+export async function editComment(
+  commentId: string,
+  _state: EditCommentState,
+  formData: FormData
+): Promise<EditCommentState> {
+  const user = await getCurrentUser();
+
+  const validated = EditCommentSchema.safeParse({ body: formData.get("body") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+  if (!comment || comment.deletedAt) {
+    return { error: "Commento non trovato." };
+  }
+  if (comment.authorId !== user.id) {
+    return { error: "Non autorizzato." };
+  }
+  if (Date.now() - comment.createdAt.getTime() > EDIT_WINDOW_MS) {
+    return { error: "Non è più possibile modificare questo commento (limite di 5 minuti)." };
+  }
+
+  await prisma.comment.update({
+    where: { id: commentId },
+    data: { body: validated.data.body, editedAt: new Date() },
+  });
+
+  revalidatePath(`/tickets/${comment.ticketId}`);
+  return { success: true };
+}
+
+export type DeleteCommentState = { error?: string } | undefined;
+
+export async function deleteComment(commentId: string): Promise<DeleteCommentState> {
+  const user = await getCurrentUser();
+
+  const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+  if (!comment || comment.deletedAt) {
+    return;
+  }
+
+  const isOwnAndFresh =
+    comment.authorId === user.id && Date.now() - comment.createdAt.getTime() <= EDIT_WINDOW_MS;
+  if (!isOwnAndFresh && user.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+
+  await prisma.comment.update({
+    where: { id: commentId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  });
+
+  revalidatePath(`/tickets/${comment.ticketId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Update status (staff only)
 // ---------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     ticket: { findUnique: vi.fn(), update: vi.fn() },
-    comment: { create: vi.fn() },
+    comment: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     user: { findMany: vi.fn(async () => []), findUnique: vi.fn() },
     ticketEvent: { create: vi.fn() },
   },
@@ -20,7 +20,7 @@ vi.mock("@/lib/settings", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/dal";
-import { addComment } from "./tickets";
+import { addComment, deleteComment, editComment } from "./tickets";
 
 function form(fields: Record<string, string>) {
   const fd = new FormData();
@@ -136,5 +136,136 @@ describe("addComment() auto-assign on public IT reply", () => {
 
     const assignCall = vi.mocked(prisma.ticket.update).mock.calls.find((c) => "assigneeId" in c[0].data);
     expect(assignCall).toBeUndefined();
+  });
+});
+
+function commentFixture(overrides: Partial<{
+  id: string;
+  ticketId: string;
+  authorId: string;
+  createdAt: Date;
+  deletedAt: Date | null;
+}> = {}) {
+  return {
+    id: "c1",
+    ticketId: "t1",
+    authorId: "owner",
+    body: "Testo originale",
+    createdAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+describe("editComment()", () => {
+  it("lets the author edit within the 5-minute window", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(commentFixture() as never);
+
+    const state = await editComment("c1", undefined, form({ body: "Testo corretto" }));
+
+    expect(state).toEqual({ success: true });
+    expect(prisma.comment.update).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { body: "Testo corretto", editedAt: expect.any(Date) },
+    });
+  });
+
+  it("refuses to edit someone else's comment", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "intruder", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(commentFixture() as never);
+
+    const state = await editComment("c1", undefined, form({ body: "Testo modificato" }));
+
+    expect(state?.error).toBe("Non autorizzato.");
+    expect(prisma.comment.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to edit past the 5-minute window, even for the author", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(
+      commentFixture({ createdAt: new Date(Date.now() - 6 * 60 * 1000) }) as never
+    );
+
+    const state = await editComment("c1", undefined, form({ body: "Troppo tardi" }));
+
+    expect(state?.error).toMatch(/5 minuti/);
+    expect(prisma.comment.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to edit an already-deleted comment", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(
+      commentFixture({ deletedAt: new Date() }) as never
+    );
+
+    const state = await editComment("c1", undefined, form({ body: "..." }));
+
+    expect(state?.error).toBe("Commento non trovato.");
+    expect(prisma.comment.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteComment()", () => {
+  it("lets the author delete their own comment within the window", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(commentFixture() as never);
+
+    const state = await deleteComment("c1");
+
+    expect(state).toBeUndefined();
+    expect(prisma.comment.update).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { deletedAt: expect.any(Date), deletedById: "owner" },
+    });
+  });
+
+  it("refuses the author past the 5-minute window", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", role: "USER" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(
+      commentFixture({ createdAt: new Date(Date.now() - 6 * 60 * 1000) }) as never
+    );
+
+    const state = await deleteComment("c1");
+
+    expect(state?.error).toBe("Non autorizzato.");
+    expect(prisma.comment.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses another IT staff member trying to delete someone else's comment", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "tech", role: "IT" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(commentFixture() as never);
+
+    const state = await deleteComment("c1");
+
+    expect(state?.error).toBe("Non autorizzato.");
+    expect(prisma.comment.update).not.toHaveBeenCalled();
+  });
+
+  it("lets an Admin delete any comment, regardless of age or author", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "boss", role: "ADMIN" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(
+      commentFixture({ createdAt: new Date(Date.now() - 60 * 60 * 1000) }) as never
+    );
+
+    const state = await deleteComment("c1");
+
+    expect(state).toBeUndefined();
+    expect(prisma.comment.update).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { deletedAt: expect.any(Date), deletedById: "boss" },
+    });
+  });
+
+  it("no-ops on an already-deleted comment", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "boss", role: "ADMIN" } as never);
+    vi.mocked(prisma.comment.findUnique).mockResolvedValue(
+      commentFixture({ deletedAt: new Date() }) as never
+    );
+
+    const state = await deleteComment("c1");
+
+    expect(state).toBeUndefined();
+    expect(prisma.comment.update).not.toHaveBeenCalled();
   });
 });
