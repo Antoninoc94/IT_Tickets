@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { marked } from "marked";
+import { renderKbMarkdown } from "@/lib/kb-markdown";
 
 export function MarkdownEditor({
   name,
@@ -16,7 +16,7 @@ export function MarkdownEditor({
 
   useEffect(() => {
     if (tab === "preview") {
-      setPreview(marked.parse(value) as string);
+      setPreview(renderKbMarkdown(value));
     }
   }, [tab, value]);
 

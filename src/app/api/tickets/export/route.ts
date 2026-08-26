@@ -76,7 +76,14 @@ export async function GET(request: Request) {
     .sort((a, b) => a[1] - b[1])
     .map(([name]) => name);
 
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  // Prevent CSV/formula injection when the export is opened in Excel/Sheets:
+  // a value starting with =, +, -, @ (or tab/CR) can be interpreted as a
+  // formula. User-controlled fields (title, description, custom fields) are
+  // free text, so neutralize those prefixes with a leading apostrophe.
+  const esc = (v: string) => {
+    const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
 
   const header = [
     "ID", "Titolo", "Descrizione", "Richiedente", "Assegnato a",

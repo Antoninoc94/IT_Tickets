@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { marked } from "marked";
 import { getSettings } from "@/lib/settings";
 import { peekSession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { renderKbMarkdown } from "@/lib/kb-markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export default async function KbArticlePage({ params }: { params: Promise<{ slug
   const backHref  = session ? "/kb" : "/login";
   const backLabel = session ? "← Torna alla Knowledge Base" : "← Torna al login";
 
-  const bodyHtml = marked.parse(article.body) as string;
+  const bodyHtml = renderKbMarkdown(article.body);
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
