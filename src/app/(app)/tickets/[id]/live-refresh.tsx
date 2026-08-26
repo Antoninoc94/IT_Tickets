@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { markTicketViewed } from "@/app/actions/tickets";
 
 const POLL_MS = 15_000;
 
@@ -28,6 +29,10 @@ export function LiveRefresh({ ticketId, updatedAtISO }: { ticketId: string; upda
         if (data.updatedAt && data.updatedAt !== lastKnown.current) {
           lastKnown.current = data.updatedAt;
           router.refresh();
+          // The user is looking at this exact update right now (we only get
+          // here when the tab is visible) — re-stamp "viewed" so the
+          // dashboard's unread indicator doesn't stay stuck on the old state.
+          markTicketViewed(ticketId).catch(() => {});
         }
       } catch {
         // Transient network hiccup — just try again on the next tick.
