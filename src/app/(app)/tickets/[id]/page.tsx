@@ -19,6 +19,7 @@ import { TicketHistory } from "./ticket-history";
 import { ViewTracker } from "./view-tracker";
 import { LiveRefresh } from "./live-refresh";
 import { CommentItem } from "./comment-item";
+import { CommentsScrollArea } from "./comments-scroll-area";
 import { TagEditor } from "./tag-editor";
 import { SimilarTickets } from "./similar-tickets";
 
@@ -252,7 +253,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           Commenti {visibleComments.length > 0 && <span className="text-gray-400">({visibleComments.length})</span>}
         </h2>
         {visibleComments.length === 0 && <p className="text-sm text-gray-500">Nessun commento.</p>}
-        <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+        <CommentsScrollArea commentCount={visibleComments.length}>
           {visibleComments.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -262,7 +263,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               mentionableNames={mentionableNames}
             />
           ))}
-        </div>
+        </CommentsScrollArea>
       </div>
 
       <TicketHistory events={ticket.events} />
