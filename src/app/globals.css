@@ -28,6 +28,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  /* Prevents the tiny horizontal scrollbar that "100vw" full-bleed sections
+     (e.g. the ticket detail page) introduce, since 100vw includes the
+     vertical scrollbar's own width. `clip` (unlike `hidden`) doesn't risk
+     breaking `position: sticky` elements elsewhere on the page. */
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
