@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { deleteUser, resetUserPassword, toggleUserActive } from "@/app/actions/users";
+import { deleteUser, resetUserPassword, toggleUserActive, unlockUserLogin } from "@/app/actions/users";
 
 function generatePassword() {
   const bytes = new Uint8Array(9);
@@ -45,7 +45,17 @@ function ResetPasswordForm({ userId, onDone }: { userId: string; onDone: () => v
   );
 }
 
-export function UserRowActions({ userId, active, isSelf }: { userId: string; active: boolean; isSelf: boolean }) {
+export function UserRowActions({
+  userId,
+  active,
+  isSelf,
+  locked,
+}: {
+  userId: string;
+  active: boolean;
+  isSelf: boolean;
+  locked: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<"idle" | "reset">("idle");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -68,6 +78,15 @@ export function UserRowActions({ userId, active, isSelf }: { userId: string; act
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-3">
+        {locked && (
+          <button
+            disabled={isPending}
+            onClick={() => startTransition(() => unlockUserLogin(userId))}
+            className="text-sm text-amber-600 hover:text-amber-800 disabled:opacity-60"
+          >
+            Sblocca
+          </button>
+        )}
         <button
           disabled={isPending}
           onClick={() => startTransition(() => toggleUserActive(userId))}

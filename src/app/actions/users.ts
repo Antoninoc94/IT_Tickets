@@ -117,6 +117,20 @@ export async function updateUserProfile(
   return { success: true };
 }
 
+export async function unlockUserLogin(userId: string) {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") {
+    throw new Error("Non autorizzato.");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
+
+  revalidatePath("/admin/users");
+}
+
 export async function toggleUserActive(userId: string) {
   const current = await getCurrentUser();
   if (current.role !== "ADMIN") {

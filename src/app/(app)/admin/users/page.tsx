@@ -73,30 +73,38 @@ export default async function AdminUsersPage({
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="table-row">
-                <td className="px-4 py-3">
-                  <EditProfile userId={u.id} name={u.name} email={u.email} />
-                </td>
-                <td className="px-4 py-3">
-                  <RoleSelect userId={u.id} role={u.role} isSelf={u.id === current.id} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className={`badge ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {u.active ? "Attivo" : "Disattivato"}
-                    </span>
-                    {!u.emailVerifiedAt && <span className="badge bg-amber-100 text-amber-700">Da verificare</span>}
-                    {u.mustChangePassword && (
-                      <span className="badge bg-amber-100 text-amber-700">Password provvisoria</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <UserRowActions userId={u.id} active={u.active} isSelf={u.id === current.id} />
-                </td>
-              </tr>
-            ))}
+            {users.map((u) => {
+              const isLocked = Boolean(u.lockedUntil && u.lockedUntil > new Date());
+              return (
+                <tr key={u.id} className="table-row">
+                  <td className="px-4 py-3">
+                    <EditProfile userId={u.id} name={u.name} email={u.email} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <RoleSelect userId={u.id} role={u.role} isSelf={u.id === current.id} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className={`badge ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                        {u.active ? "Attivo" : "Disattivato"}
+                      </span>
+                      {!u.emailVerifiedAt && <span className="badge bg-amber-100 text-amber-700">Da verificare</span>}
+                      {u.mustChangePassword && (
+                        <span className="badge bg-amber-100 text-amber-700">Password provvisoria</span>
+                      )}
+                      {isLocked && (
+                        <span className="badge bg-red-100 text-red-700" title={`Bloccato fino alle ${u.lockedUntil!.toLocaleTimeString("it-IT")}`}>
+                          Bloccato
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <UserRowActions userId={u.id} active={u.active} isSelf={u.id === current.id} locked={isLocked} />
+                  </td>
+                </tr>
+              );
+            })}
             {users.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
