@@ -4,7 +4,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     ticket: { findUnique: vi.fn(), update: vi.fn() },
     comment: { create: vi.fn() },
-    user: { findMany: vi.fn(async () => []) },
+    user: { findMany: vi.fn(async () => []), findUnique: vi.fn() },
+    ticketEvent: { create: vi.fn() },
   },
 }));
 vi.mock("@/lib/dal", () => ({ getCurrentUser: vi.fn() }));
@@ -88,5 +89,52 @@ describe("addComment() authorization", () => {
 
     expect(state?.error).toBe("Ticket non trovato.");
     expect(prisma.comment.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("addComment() auto-assign on public IT reply", () => {
+  beforeEach(() => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "tech", name: "Tecnico", email: "tech@azienda.it" } as never);
+    vi.mocked(prisma.ticket.update).mockResolvedValue({ ...ticket, requester: ticket.requester } as never);
+  });
+
+  it("claims an unassigned ticket when an IT user posts a public reply", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "tech", role: "IT", name: "Tecnico" } as never);
+
+    await addComment("t1", undefined, form({ body: "Ci penso io" }));
+
+    const assignCall = vi.mocked(prisma.ticket.update).mock.calls.find((c) => "assigneeId" in c[0].data);
+    expect(assignCall?.[0].data).toMatchObject({ assigneeId: "tech", status: "IN_PROGRESS" });
+  });
+
+  it("does not touch the assignee for an internal note", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "tech", role: "IT", name: "Tecnico" } as never);
+
+    await addComment("t1", undefined, form({ body: "Nota interna", internal: "on" }));
+
+    const assignCall = vi.mocked(prisma.ticket.update).mock.calls.find((c) => "assigneeId" in c[0].data);
+    expect(assignCall).toBeUndefined();
+  });
+
+  it("does not steal an already-assigned ticket from a colleague", async () => {
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({
+      ...ticket,
+      assignee: { id: "other-tech", email: "other@azienda.it" },
+    } as never);
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "tech", role: "IT", name: "Tecnico" } as never);
+
+    await addComment("t1", undefined, form({ body: "Rispondo io per il collega" }));
+
+    const assignCall = vi.mocked(prisma.ticket.update).mock.calls.find((c) => "assigneeId" in c[0].data);
+    expect(assignCall).toBeUndefined();
+  });
+
+  it("does not auto-assign an ADMIN who replies", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "boss", role: "ADMIN", name: "Capo" } as never);
+
+    await addComment("t1", undefined, form({ body: "Risposta dall'admin" }));
+
+    const assignCall = vi.mocked(prisma.ticket.update).mock.calls.find((c) => "assigneeId" in c[0].data);
+    expect(assignCall).toBeUndefined();
   });
 });

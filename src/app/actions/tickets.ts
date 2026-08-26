@@ -213,6 +213,12 @@ export async function addComment(
     data: { updatedAt: new Date() },
   });
 
+  // An IT reply claims an unassigned ticket — internal notes don't count
+  // (e.g. "@collega, can you take this one?" shouldn't self-assign).
+  if (user.role === "IT" && !isInternal && !ticket.assignee) {
+    await assignTicket(ticketId, user.id);
+  }
+
   if (!isInternal) {
     const settings = await getSettings();
     const vars = {
@@ -658,7 +664,10 @@ export async function assignTicket(ticketId: string, assigneeId: string) {
   const settings = await getSettings();
 
   if (settings.emailEnabled) {
-    if (assignee) {
+    // Skip the "you've been assigned" email when someone assigns a ticket to
+    // themselves (manually, or by auto-claiming it via a comment) — they
+    // already know.
+    if (assignee && assignee.id !== user.id) {
       const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
       const body = renderTemplate(settings.assignedEmailBody, vars);
       await sendMail(
