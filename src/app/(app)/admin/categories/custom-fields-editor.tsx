@@ -79,6 +79,17 @@ function AddFieldForm({ categoryId }: { categoryId: string }) {
   const [type, setType] = useState("text");
   const [open, setOpen] = useState(false);
 
+  // Close and reset only once the submission actually succeeds — adjusting
+  // state during render (not in an effect) per https://react.dev/learn/you-might-not-need-an-effect
+  const [handledSuccess, setHandledSuccess] = useState(state?.success);
+  if (state?.success !== handledSuccess) {
+    setHandledSuccess(state?.success);
+    if (state?.success) {
+      setOpen(false);
+      setType("text");
+    }
+  }
+
   if (!open) {
     return (
       <button
@@ -92,14 +103,7 @@ function AddFieldForm({ categoryId }: { categoryId: string }) {
   }
 
   return (
-    <form
-      action={async (fd) => {
-        await formAction(fd);
-        setOpen(false);
-        setType("text");
-      }}
-      className="space-y-3 rounded-md border border-dashed border-[var(--border)] p-3"
-    >
+    <form action={formAction} className="space-y-3 rounded-md border border-dashed border-[var(--border)] p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Nuovo campo</p>
 
       <div className="grid grid-cols-2 gap-3">

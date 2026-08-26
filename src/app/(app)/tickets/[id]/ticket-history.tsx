@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { LocalTime } from "@/app/local-time";
-import type { TicketEventType } from "@/generated/prisma/enums";
+import { priorityLabels, statusLabels } from "@/lib/ticket-labels";
+import type { TicketEventType, TicketPriority, TicketStatus } from "@/generated/prisma/enums";
 
 type EventItem = {
   id: string;
@@ -13,36 +14,13 @@ type EventItem = {
   actor: { name: string } | null;
 };
 
-const statusLabel: Record<string, string> = {
-  OPEN: "Aperto",
-  IN_PROGRESS: "In lavorazione",
-  WAITING_ON_USER: "In attesa utente",
-  RESOLVED: "Risolto",
-  CLOSED: "Chiuso",
-};
-
-const priorityLabel: Record<string, string> = {
-  LOW: "Bassa",
-  MEDIUM: "Media",
-  HIGH: "Alta",
-  URGENT: "Urgente",
-};
-
-const categoryLabel: Record<string, string> = {
-  HARDWARE: "Hardware",
-  SOFTWARE: "Software",
-  NETWORK: "Rete",
-  ACCOUNT: "Account",
-  OTHER: "Altro",
-};
-
 function eventDescription(e: EventItem): string {
   const meta = e.meta ?? {};
   switch (e.type) {
     case "CREATED":
       return "Ticket aperto";
     case "STATUS_CHANGED":
-      return `Stato cambiato da "${statusLabel[meta.from] ?? meta.from}" a "${statusLabel[meta.to] ?? meta.to}"`;
+      return `Stato cambiato da "${statusLabels[meta.from as TicketStatus] ?? meta.from}" a "${statusLabels[meta.to as TicketStatus] ?? meta.to}"`;
     case "ASSIGNED":
       return `Assegnato a ${meta.assigneeName ?? "—"}`;
     case "UNASSIGNED":
@@ -54,9 +32,10 @@ function eventDescription(e: EventItem): string {
     case "REOPENED":
       return "Ticket riaperto";
     case "PRIORITY_CHANGED":
-      return `Priorità cambiata da "${priorityLabel[meta.from] ?? meta.from}" a "${priorityLabel[meta.to] ?? meta.to}"`;
+      return `Priorità cambiata da "${priorityLabels[meta.from as TicketPriority] ?? meta.from}" a "${priorityLabels[meta.to as TicketPriority] ?? meta.to}"`;
     case "CATEGORY_CHANGED":
-      return `Categoria cambiata da "${categoryLabel[meta.from] ?? meta.from}" a "${categoryLabel[meta.to] ?? meta.to}"`;
+      // Categories are admin-defined names (not a fixed enum), so meta.from/to are already display-ready.
+      return `Categoria cambiata da "${meta.from}" a "${meta.to}"`;
     case "MERGED":
       return meta.direction === "received"
         ? `Ticket "${meta.duplicateTitle}" unito in questo`
