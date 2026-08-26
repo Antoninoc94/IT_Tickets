@@ -100,7 +100,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const canReopen = ticket.status === "CLOSED" && isStaff;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="relative left-1/2 w-screen -translate-x-1/2">
+    <div className="mx-auto max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8">
       <ViewTracker ticketId={id} />
       <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
 
@@ -277,10 +278,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <DeleteTicketButton ticketId={ticket.id} />
             </div>
           )}
+
+          <TicketHistory events={ticket.events} />
         </aside>
       </div>
-
-      <TicketHistory events={ticket.events} />
+    </div>
     </div>
   );
 }

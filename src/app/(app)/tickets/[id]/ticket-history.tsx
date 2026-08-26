@@ -72,7 +72,7 @@ export function TicketHistory({ events }: { events: EventItem[] }) {
   if (events.length === 0) return null;
 
   return (
-    <div className="card p-5">
+    <div>
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
