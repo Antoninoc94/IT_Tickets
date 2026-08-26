@@ -3,15 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { sendMail, ticketUrl } from "@/lib/mail";
 import { buildDigestHtml } from "@/lib/email-html";
 import { getSettings } from "@/lib/settings";
-
-function cronAuth(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return request.headers.get("x-cron-secret") === secret;
-}
+import { isValidCronSecret } from "@/lib/cron-auth";
 
 export async function GET(request: Request) {
-  if (!cronAuth(request)) {
+  if (!isValidCronSecret(request)) {
     return NextResponse.json({ error: "Non autorizzato." }, { status: 401 });
   }
 

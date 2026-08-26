@@ -4,15 +4,10 @@ import { sendMail, ticketUrl } from "@/lib/mail";
 import { buildEmailHtml } from "@/lib/email-html";
 import { getSettings, renderTemplate } from "@/lib/settings";
 import { statusLabels } from "@/lib/ticket-labels";
-
-function cronAuth(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return request.headers.get("x-cron-secret") === secret;
-}
+import { isValidCronSecret } from "@/lib/cron-auth";
 
 export async function GET(request: Request) {
-  if (!cronAuth(request)) {
+  if (!isValidCronSecret(request)) {
     return NextResponse.json({ error: "Non autorizzato." }, { status: 401 });
   }
 
