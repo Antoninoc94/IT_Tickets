@@ -15,6 +15,17 @@ function checkFiles(files: File[]): string | null {
   return null;
 }
 
+function mergeFiles(existing: File[], incoming: File[]): File[] {
+  const merged = [...existing];
+  for (const file of incoming) {
+    const isDuplicate = merged.some(
+      (f) => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+    );
+    if (!isDuplicate) merged.push(file);
+  }
+  return merged;
+}
+
 function CloseIcon() {
   return (
     <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -28,6 +39,10 @@ function CloseIcon() {
  * the pending selection before submitting — a plain `<input type="file">`
  * only supports clearing the whole selection at once. We keep the real
  * input in sync via the DataTransfer API since FileList itself is read-only.
+ *
+ * Also accumulates across multiple picks: a native `<input multiple>`
+ * replaces its whole selection every time the dialog is confirmed, so
+ * without this, browsing a second batch of files would discard the first.
  */
 export function AttachmentInput({
   id,
@@ -52,6 +67,12 @@ export function AttachmentInput({
     if (inputRef.current) inputRef.current.files = dt.files;
   }
 
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const incoming = Array.from(e.target.files ?? []);
+    if (incoming.length === 0) return;
+    applyFiles(mergeFiles(files, incoming));
+  }
+
   function removeFile(index: number) {
     applyFiles(files.filter((_, i) => i !== index));
   }
@@ -66,7 +87,7 @@ export function AttachmentInput({
         multiple
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
         className="field-input file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
-        onChange={(e) => applyFiles(Array.from(e.target.files ?? []))}
+        onChange={handleChange}
       />
 
       {files.length > 0 && (
