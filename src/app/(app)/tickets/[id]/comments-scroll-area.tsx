@@ -9,17 +9,34 @@ const NEAR_BOTTOM_PX = 80;
  * but only auto-scrolls on a new comment if the user was already near the
  * bottom. If they've scrolled up to read older history, a new comment
  * arriving (e.g. via live-refresh) won't yank their scroll position away.
+ *
+ * `forceScrollToken` bypasses that check: bump it (e.g. after the user's own
+ * comment is posted) to scroll to the bottom regardless of prior position —
+ * you always want to see the message you just wrote.
  */
-export function CommentsScrollArea({ children, commentCount }: { children: React.ReactNode; commentCount: number }) {
+export function CommentsScrollArea({
+  children,
+  commentCount,
+  forceScrollToken = 0,
+}: {
+  children: React.ReactNode;
+  commentCount: number;
+  forceScrollToken?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const prevForceTokenRef = useRef(forceScrollToken);
 
   useEffect(() => {
     const el = ref.current;
-    if (el && isNearBottomRef.current) {
+    if (!el) return;
+    const forced = forceScrollToken !== prevForceTokenRef.current;
+    prevForceTokenRef.current = forceScrollToken;
+    if (forced || isNearBottomRef.current) {
       el.scrollTop = el.scrollHeight;
+      isNearBottomRef.current = true;
     }
-  }, [commentCount]);
+  }, [commentCount, forceScrollToken]);
 
   return (
     <div

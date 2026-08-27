@@ -7,7 +7,6 @@ import {
   statusBadgeClass,
   statusLabels,
 } from "@/lib/ticket-labels";
-import { CommentForm } from "./comment-form";
 import { TicketControls } from "./ticket-controls";
 import { getSettings } from "@/lib/settings";
 import { computeSla, formatRemaining } from "@/lib/sla";
@@ -19,7 +18,7 @@ import { TicketHistory } from "./ticket-history";
 import { ViewTracker } from "./view-tracker";
 import { LiveRefresh } from "./live-refresh";
 import { CommentItem } from "./comment-item";
-import { CommentsScrollArea } from "./comments-scroll-area";
+import { CommentsPanel } from "./comments-panel";
 import { TagEditor } from "./tag-editor";
 import { SimilarTickets } from "./similar-tickets";
 
@@ -146,7 +145,14 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               Commenti {visibleComments.length > 0 && <span className="text-gray-400">({visibleComments.length})</span>}
             </h2>
             {visibleComments.length === 0 && <p className="text-sm text-gray-500">Nessun commento.</p>}
-            <CommentsScrollArea commentCount={visibleComments.length}>
+            <CommentsPanel
+              commentCount={visibleComments.length}
+              ticketId={ticket.id}
+              canComment={!(ticket.status === "CLOSED" && !isStaff)}
+              canWriteInternal={isStaff}
+              cannedResponses={cannedResponses}
+              mentionableUsers={itUsers}
+            >
               {visibleComments.map((comment) => (
                 <CommentItem
                   key={comment.id}
@@ -156,14 +162,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   mentionableNames={mentionableNames}
                 />
               ))}
-            </CommentsScrollArea>
+            </CommentsPanel>
           </div>
-
-          {ticket.status === "CLOSED" && !isStaff ? (
-            <p className="text-center text-sm text-gray-400">Il ticket è chiuso. Non è possibile aggiungere nuovi commenti.</p>
-          ) : (
-            <CommentForm ticketId={ticket.id} canWriteInternal={isStaff} cannedResponses={cannedResponses} mentionableUsers={itUsers} />
-          )}
         </div>
 
         {/* Sidebar — metadata & actions. Sticky + independently scrollable on

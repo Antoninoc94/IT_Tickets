@@ -25,16 +25,28 @@ export function CommentForm({
   canWriteInternal,
   cannedResponses = [],
   mentionableUsers = [],
+  onSubmitted,
 }: {
   ticketId: string;
   canWriteInternal: boolean;
   cannedResponses?: CannedResponse[];
   mentionableUsers?: MentionUser[];
+  onSubmitted?: () => void;
 }) {
   const action = addComment.bind(null, ticketId);
   const [state, formAction, pending] = useActionState<CommentState, FormData>(action, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wasPendingRef = useRef(false);
+
+  // Fires once the action settles successfully (pending true -> false with no
+  // error), so the comment list can scroll to show the comment we just sent.
+  useEffect(() => {
+    if (wasPendingRef.current && !pending && !state?.error) {
+      onSubmitted?.();
+    }
+    wasPendingRef.current = pending;
+  }, [pending, state, onSubmitted]);
 
   // Mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
