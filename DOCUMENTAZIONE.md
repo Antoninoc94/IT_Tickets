@@ -112,10 +112,12 @@ Il sistema prevede tre ruoli distinti:
 - **Campi personalizzati per categoria**: il form mostra dinamicamente i campi extra definiti dalla categoria selezionata (testo breve, testo lungo, numero, selezione a tendina); i valori vengono salvati con il ticket e inclusi nell'export CSV
 - **Modelli (template)**: pre-compilazione del form da un template configurato
 - Staff può aprire ticket **per conto di** un altro utente: selettore con ricerca per nome (combobox filtrabile) o inserimento nome libero
-- Cronologia completa degli eventi (creazione, cambi stato, assegnazioni, chiusura, riapertura) — le azioni di sistema mostrano "Sistema" come autore
-- Commenti pubblici e note interne per lo staff
+- **Cronologia eventi** (creazione, cambi stato, assegnazioni, chiusura, riapertura) in un riquadro collassabile in sidebar — le azioni di sistema mostrano "Sistema" come autore; la lista è scorrevole internamente oltre una certa altezza, così non spinge il resto della sidebar fuori dallo schermo
+- **Commenti pubblici e note interne** per lo staff, mostrati come bolle stile chat: i commenti dello staff (IT/Admin) sono allineati a destra e quelli del richiedente a sinistra — lo stesso per chiunque apra il ticket, indipendentemente da chi è loggato; colore per ruolo (bianco = richiedente, azzurro = IT/Admin, ambra = nota interna) e messaggi consecutivi dello stesso autore raggruppati senza ripetere avatar/nome
+- **Aggiornamento in tempo reale**: la pagina del ticket controlla ogni 15 secondi se ci sono nuovi commenti/eventi da un'altra sessione e si aggiorna da sola (nessun refresh manuale)
+- La sezione Commenti è **collassabile** (come la Cronologia): se è chiusa e arriva un commento da qualcun altro dopo l'ultima visita, compare un pallino di notifica accanto al conteggio, finché non la riapri
 - **Menzioni** nei commenti (`@nome`) con notifica email all'utente menzionato
-- **Allegati** su ticket e commenti (limite configurabile, default 25 MB) con anteprima inline: immagini visualizzate direttamente, PDF/testo in iframe, altri file scaricabili
+- **Allegati** su ticket e commenti (limite configurabile, default 25 MB): nel form si possono selezionare più file anche in più passaggi (si accumulano, con controllo duplicati) e rimuovere singolarmente prima dell'invio; anteprima inline ingrandita fino a ~1280px/80% dell'altezza schermo (immagini dirette, PDF/testo in iframe, altri file scaricabili)
 - Tag colorati assegnabili e rimuovibili direttamente dalla pagina del ticket
 - **Chiusura con motivazione obbligatoria**: cliccando "Chiudi ticket" si apre un form inline che richiede almeno 5 caratteri di motivazione; il motivo viene salvato come commento pubblico
 - **Riapertura con motivazione obbligatoria**: stesso meccanismo per "Riapri ticket"
@@ -401,21 +403,27 @@ src/
 │   │   ├── layout.tsx          ← Header con navigazione, theme toggle, badge non letti
 │   │   ├── nav-dropdown.tsx    ← Dropdown navigazione (client)
 │   │   ├── mobile-nav.tsx      ← Navigazione mobile (drawer)
-│   │   ├── unread-badge.tsx    ← Badge contatore non letti (polling 30s)
+│   │   ├── unread-badge.tsx    ← Badge contatore non letti (rifetch a ogni cambio pagina)
 │   │   ├── dashboard/
 │   │   │   ├── page.tsx        ← Server: fetch ticket, SLA, paginazione, filtri
 │   │   │   ├── ticket-table.tsx← Client: tabella interattiva + bulk actions
 │   │   │   └── filter-bar.tsx  ← Filtri avanzati (form GET)
 │   │   ├── tickets/
+│   │   │   ├── attachment-input.tsx ← Input file condiviso (new/ e [id]/): selezione cumulativa, chip rimovibili
 │   │   │   ├── new/            ← Form apertura ticket (template, requester, campi custom)
 │   │   │   └── [id]/           ← Dettaglio: commenti, allegati, controlli, cronologia
 │   │   │       ├── ticket-controls.tsx    ← Dropdown stato/priorità/categoria/assegnatario
 │   │   │       ├── close-ticket-button.tsx← Form inline con motivazione obbligatoria
 │   │   │       ├── reopen-ticket-button.tsx← Form inline con motivazione obbligatoria
 │   │   │       ├── delete-ticket-button.tsx
-│   │   │       ├── ticket-history.tsx     ← Cronologia eventi (autore "Sistema" per cron)
+│   │   │       ├── ticket-history.tsx     ← Cronologia eventi, collassabile (autore "Sistema" per cron)
 │   │   │       ├── tag-editor.tsx         ← Aggiunta/rimozione tag
-│   │   │       ├── comment-form.tsx       ← Commenti + risposte rapide + menzioni
+│   │   │       ├── similar-tickets.tsx    ← Suggerimenti ticket simili per titolo (staff)
+│   │   │       ├── live-refresh.tsx       ← Poll ogni 15s, router.refresh() se il ticket è cambiato
+│   │   │       ├── comments-panel.tsx     ← Sezione commenti collassabile + badge non letto
+│   │   │       ├── comments-scroll-area.tsx← Box scorrevole con auto-scroll allo scrivere/arrivo commento
+│   │   │       ├── comment-item.tsx       ← Singola bolla commento (allineamento per ruolo, raggruppamento)
+│   │   │       ├── comment-form.tsx       ← Form nuovo commento + risposte rapide + menzioni
 │   │   │       ├── attachment-list.tsx    ← Lista allegati con anteprima modale
 │   │   │       └── view-tracker.tsx       ← Traccia ultima visualizzazione
 │   │   ├── reports/            ← Report con KPI, grafici, filtri e stampa
@@ -666,11 +674,6 @@ La ricerca attuale usa `contains` su titolo e descrizione. Migliorabile con:
 - Indice full-text PostgreSQL (`to_tsvector`)
 - Ricerca anche nel corpo dei commenti
 - Risultati ordinati per rilevanza
-
-#### 🔄 Aggiornamento automatico pagina ticket
-La pagina dettaglio ticket non si aggiorna automaticamente quando un altro utente aggiunge un commento. Opzioni:
-- Polling ogni 30 secondi
-- Server-Sent Events per update in tempo reale
 
 #### 📋 Vista Kanban
 Alternativa alla tabella della dashboard: board a colonne per stato con drag & drop dei ticket.
