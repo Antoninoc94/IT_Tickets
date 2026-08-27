@@ -63,7 +63,7 @@ function AttachmentModal({ attachment, onClose }: { attachment: AttachmentItem; 
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-[min(92vw,80rem)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -95,13 +95,13 @@ function AttachmentModal({ attachment, onClose }: { attachment: AttachmentItem; 
             <img
               src={inlineUrl}
               alt={attachment.filename}
-              className="max-h-[70vh] max-w-full rounded object-contain shadow"
+              className="max-h-[80vh] max-w-full rounded object-contain shadow"
             />
           ) : isPdf(attachment.mimeType) || isText(attachment.mimeType) ? (
             <iframe
               src={inlineUrl}
               title={attachment.filename}
-              className="h-[70vh] w-full rounded border border-gray-200 bg-white"
+              className="h-[80vh] w-full rounded border border-gray-200 bg-white"
             />
           ) : (
             <div className="flex flex-col items-center gap-4 py-12 text-center">
