@@ -38,7 +38,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       mergedInto: { select: { id: true, title: true } },
       attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
       comments: {
-        include: { author: true, attachments: true, deletedBy: { select: { name: true } } },
+        include: {
+          author: { select: { name: true, role: true } },
+          attachments: true,
+          deletedBy: { select: { name: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
       events: {

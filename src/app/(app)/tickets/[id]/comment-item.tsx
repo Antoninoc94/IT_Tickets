@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition, useActionState } from "react";
+import { useEffect, useRef, useState, useTransition, useActionState } from "react";
 import { deleteComment, editComment, type EditCommentState } from "@/app/actions/tickets";
 import { renderWithMentions } from "@/lib/render-mentions";
 import { LocalTime } from "@/app/local-time";
 import { AttachmentList } from "./attachment-list";
+import type { Role } from "@/generated/prisma/enums";
 
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -17,7 +18,7 @@ type CommentItemProps = {
     editedAt: Date | null;
     deletedAt: Date | null;
     authorId: string;
-    author: { name: string };
+    author: { name: string; role: Role };
     deletedBy: { name: string } | null;
     attachments: { id: string; filename: string; sizeBytes: number; mimeType: string }[];
   };
@@ -28,8 +29,16 @@ type CommentItemProps = {
 
 export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames }: CommentItemProps) {
   const [editing, setEditing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const editAction = editComment.bind(null, comment.id);
   const [editState, editFormAction, editPending] = useActionState<EditCommentState, FormData>(editAction, undefined);
+
+  // The comment list is a short scrollable box (comments-scroll-area.tsx) —
+  // entering edit mode grows this card enough that the Save/Cancel buttons
+  // can end up clipped below the fold, so bring them into view explicitly.
+  useEffect(() => {
+    if (editing) containerRef.current?.scrollIntoView({ block: "nearest" });
+  }, [editing]);
 
   const [isDeleting, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -63,6 +72,7 @@ export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames 
   const isOwn = comment.authorId === currentUserId;
   const canEdit = isOwn && withinWindow;
   const canDelete = (isOwn && withinWindow) || isAdmin;
+  const isStaffAuthor = comment.author.role !== "USER";
 
   function handleDelete() {
     if (!confirm("Eliminare questo commento?")) return;
@@ -75,8 +85,13 @@ export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames 
 
   return (
     <div
+      ref={containerRef}
       className={`rounded-xl border p-4 text-sm shadow-sm ${
-        comment.internal ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"
+        comment.internal
+          ? "border-amber-200 bg-amber-50"
+          : isStaffAuthor
+            ? "border-blue-100 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40"
+            : "border-gray-200 bg-white"
       }`}
     >
       <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">

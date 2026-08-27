@@ -3,19 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useActionState } from "react";
 import { addComment, type CommentState } from "@/app/actions/tickets";
-
-const MAX_FILE_MB = 25;
-const MAX_FILES = 5;
-
-function checkFiles(files: FileList | null): string | null {
-  if (!files || files.length === 0) return null;
-  if (files.length > MAX_FILES) return `Puoi allegare al massimo ${MAX_FILES} file per volta.`;
-  for (const file of Array.from(files)) {
-    if (file.size > MAX_FILE_MB * 1024 * 1024)
-      return `"${file.name}" supera il limite di ${MAX_FILE_MB} MB.`;
-  }
-  return null;
-}
+import { AttachmentInput } from "../attachment-input";
 
 type CannedResponse = { id: string; title: string; body: string };
 type MentionUser = { name: string };
@@ -36,14 +24,21 @@ export function CommentForm({
   const action = addComment.bind(null, ticketId);
   const [state, formAction, pending] = useActionState<CommentState, FormData>(action, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [attachmentsKey, setAttachmentsKey] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wasPendingRef = useRef(false);
 
   // Fires once the action settles successfully (pending true -> false with no
   // error), so the comment list can scroll to show the comment we just sent.
+  // Also remounts AttachmentInput (via its key) since React resets the
+  // form's native fields on a successful action, but not the file chip list
+  // the input keeps in its own state — without this it'd show stale chips
+  // for files that were actually already cleared from the input.
   useEffect(() => {
     if (wasPendingRef.current && !pending && !state?.error) {
       onSubmitted?.();
+      setFileError(null);
+      setAttachmentsKey((k) => k + 1);
     }
     wasPendingRef.current = pending;
   }, [pending, state, onSubmitted]);
@@ -184,17 +179,7 @@ export function CommentForm({
         )}
       </div>
 
-      <div>
-        <input
-          name="files"
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-          className="field-input file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700"
-          onChange={(e) => setFileError(checkFiles(e.target.files))}
-        />
-        {fileError && <p className="mt-1 text-sm text-red-600">{fileError}</p>}
-      </div>
+      <AttachmentInput key={attachmentsKey} onErrorChange={setFileError} />
 
       <div className="flex items-center justify-between">
         {canWriteInternal ? (
