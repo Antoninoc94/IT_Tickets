@@ -45,7 +45,7 @@ export function CommentsScrollArea({
         const el = e.currentTarget;
         isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
       }}
-      className="max-h-[30vh] space-y-2 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-3"
+      className="max-h-[30vh] overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-3"
     >
       {children}
     </div>

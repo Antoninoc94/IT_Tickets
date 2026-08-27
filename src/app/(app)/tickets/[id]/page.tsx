@@ -157,15 +157,25 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               cannedResponses={cannedResponses}
               mentionableUsers={itUsers}
             >
-              {visibleComments.map((comment) => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  currentUserId={user.id}
-                  isAdmin={user.role === "ADMIN"}
-                  mentionableNames={mentionableNames}
-                />
-              ))}
+              {visibleComments.map((comment, i) => {
+                const previous = visibleComments[i - 1];
+                const groupedWithPrevious =
+                  !!previous &&
+                  previous.authorId === comment.authorId &&
+                  previous.internal === comment.internal &&
+                  !previous.deletedAt &&
+                  !comment.deletedAt;
+                return (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    currentUserId={user.id}
+                    isAdmin={user.role === "ADMIN"}
+                    mentionableNames={mentionableNames}
+                    groupedWithPrevious={groupedWithPrevious}
+                  />
+                );
+              })}
             </CommentsPanel>
           </div>
         </div>

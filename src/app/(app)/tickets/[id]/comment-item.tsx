@@ -25,6 +25,11 @@ type CommentItemProps = {
   currentUserId: string;
   isAdmin: boolean;
   mentionableNames: string[];
+  /** True when the previous visible comment was from the same author (and
+   *  same internal/public flag) — collapses the avatar/name header and
+   *  tightens the gap so a run of messages from one person reads as one
+   *  block instead of repeating chrome for every line. */
+  groupedWithPrevious?: boolean;
 };
 
 function initials(name: string) {
@@ -34,7 +39,13 @@ function initials(name: string) {
   return (first + second).toUpperCase();
 }
 
-export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames }: CommentItemProps) {
+export function CommentItem({
+  comment,
+  currentUserId,
+  isAdmin,
+  mentionableNames,
+  groupedWithPrevious = false,
+}: CommentItemProps) {
   const [editing, setEditing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const editAction = editComment.bind(null, comment.id);
@@ -70,11 +81,17 @@ export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames 
 
   const isOwn = comment.authorId === currentUserId;
   const isStaffAuthor = comment.author.role !== "USER";
+  // Which side a comment lands on depends only on who wrote it (staff vs.
+  // requester), never on who's currently viewing — a per-viewer "own
+  // message" side would put the same comment on different sides for
+  // different staff members looking at the same ticket.
+  const rightAlign = isStaffAuthor;
+  const topGap = groupedWithPrevious ? "mt-0.5" : "mt-2.5";
 
   if (comment.deletedAt) {
     return (
-      <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-        <div className="max-w-[min(80%,34rem)] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm italic text-gray-400">
+      <div className={`flex ${topGap} ${rightAlign ? "justify-end" : "justify-start"}`}>
+        <div className="max-w-[min(75%,28rem)] rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm italic text-gray-400">
           Commento rimosso da {comment.deletedBy?.name ?? "—"} il <LocalTime date={comment.deletedAt} />
         </div>
       </div>
@@ -99,93 +116,101 @@ export function CommentItem({ comment, currentUserId, isAdmin, mentionableNames 
       ? "border-blue-100 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40"
       : "border-gray-200 bg-white";
 
-  return (
-    <div className={`flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
-      {!isOwn && (
-        <div
-          title={comment.author.name}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-            isStaffAuthor ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"
-          }`}
-        >
-          {initials(comment.author.name)}
+  const avatar = groupedWithPrevious ? (
+    <div className="h-6 w-6 shrink-0" />
+  ) : (
+    <div
+      title={comment.author.name}
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
+        isStaffAuthor ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"
+      }`}
+    >
+      {initials(comment.author.name)}
+    </div>
+  );
+
+  const bubble = (
+    <div
+      ref={containerRef}
+      className={`min-w-0 max-w-[min(75%,28rem)] rounded-2xl border px-3.5 py-2 text-sm shadow-sm ${bubbleColor} ${
+        rightAlign ? "rounded-br-md" : "rounded-bl-md"
+      }`}
+    >
+      {(!groupedWithPrevious || comment.internal) && (
+        <div className="mb-0.5 flex items-center gap-2 text-xs">
+          {!groupedWithPrevious && <span className="font-medium text-gray-700">{comment.author.name}</span>}
+          {comment.internal && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+              Nota interna
+            </span>
+          )}
         </div>
       )}
 
-      <div
-        ref={containerRef}
-        className={`min-w-0 max-w-[min(80%,34rem)] rounded-2xl border px-4 py-2.5 text-sm shadow-sm ${bubbleColor} ${
-          isOwn ? "rounded-br-md" : "rounded-bl-md"
-        }`}
-      >
-        {(!isOwn || comment.internal) && (
-          <div className="mb-1 flex items-center gap-2 text-xs">
-            {!isOwn && <span className="font-medium text-gray-700">{comment.author.name}</span>}
-            {comment.internal && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                Nota interna
-              </span>
-            )}
+      {editing ? (
+        <form action={editFormAction} className="space-y-2">
+          <textarea
+            name="body"
+            defaultValue={comment.body}
+            required
+            rows={3}
+            className="field-input text-sm"
+          />
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={editPending} className="btn-primary py-1 text-xs">
+              {editPending ? "Salvo..." : "Salva"}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="btn-secondary py-1 text-xs">
+              Annulla
+            </button>
           </div>
-        )}
+          {editState?.error && <p className="text-xs text-red-600">{editState.error}</p>}
+        </form>
+      ) : (
+        <p className="whitespace-pre-wrap break-words text-[15px] leading-snug text-gray-800">
+          {renderWithMentions(comment.body, mentionableNames)}
+        </p>
+      )}
 
-        {editing ? (
-          <form action={editFormAction} className="space-y-2">
-            <textarea
-              name="body"
-              defaultValue={comment.body}
-              required
-              rows={3}
-              className="field-input text-sm"
-            />
-            <div className="flex items-center gap-2">
-              <button type="submit" disabled={editPending} className="btn-primary py-1 text-xs">
-                {editPending ? "Salvo..." : "Salva"}
-              </button>
-              <button type="button" onClick={() => setEditing(false)} className="btn-secondary py-1 text-xs">
-                Annulla
-              </button>
-            </div>
-            {editState?.error && <p className="text-xs text-red-600">{editState.error}</p>}
-          </form>
-        ) : (
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-gray-800">
-            {renderWithMentions(comment.body, mentionableNames)}
-          </p>
-        )}
-
-        {comment.attachments.length > 0 && (
-          <div className="mt-2">
-            <AttachmentList attachments={comment.attachments} />
-          </div>
-        )}
-
-        <div className="mt-1 flex items-center justify-end gap-1.5 text-[11px] text-gray-400">
-          {comment.editedAt && <span>(modificato)</span>}
-          <LocalTime date={comment.createdAt} timeOnly />
+      {comment.attachments.length > 0 && (
+        <div className="mt-1.5">
+          <AttachmentList attachments={comment.attachments} />
         </div>
+      )}
 
-        {!editing && (canEdit || canDelete) && (
-          <div className="mt-1 flex items-center justify-end gap-3 text-xs">
-            {canEdit && (
-              <button type="button" onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-600">
-                Modifica
-              </button>
-            )}
-            {canDelete && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="text-red-500 hover:text-red-700 disabled:opacity-50"
-              >
-                {isDeleting ? "Eliminazione..." : "Elimina"}
-              </button>
-            )}
-          </div>
-        )}
-        {deleteError && <p className="mt-1 text-xs text-red-600">{deleteError}</p>}
+      <div className="mt-0.5 flex items-center justify-end gap-1.5 text-[11px] text-gray-400">
+        {comment.editedAt && <span>(modificato)</span>}
+        <LocalTime date={comment.createdAt} timeOnly />
       </div>
+
+      {!editing && (canEdit || canDelete) && (
+        <div className="mt-0.5 flex items-center justify-end gap-3 text-xs">
+          {canEdit && (
+            <button type="button" onClick={() => setEditing(true)} className="text-gray-400 hover:text-gray-600">
+              Modifica
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-red-500 hover:text-red-700 disabled:opacity-50"
+            >
+              {isDeleting ? "Eliminazione..." : "Elimina"}
+            </button>
+          )}
+        </div>
+      )}
+      {deleteError && <p className="mt-1 text-xs text-red-600">{deleteError}</p>}
+    </div>
+  );
+
+  return (
+    <div className={`flex items-end gap-1.5 ${topGap} ${rightAlign ? "justify-end" : "justify-start"}`}>
+      {!rightAlign && avatar}
+      {bubble}
+      {rightAlign && avatar}
     </div>
   );
 }
