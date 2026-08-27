@@ -77,7 +77,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   ].filter((v, i, a) => a.indexOf(v) === i);
 
   const titleWords = ticket.title.split(/\s+/).filter((w) => w.length >= 2);
-  const [settings, cannedResponses, allTags, categories, similarTickets] = await Promise.all([
+  const [settings, cannedResponses, allTags, categories, similarTickets, ticketView] = await Promise.all([
     getSettings(),
     isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
     isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
@@ -95,8 +95,16 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
+    // Read before ViewTracker's client-side markTicketViewed() call lands, so
+    // this reflects "last time you looked" rather than "just now" — used to
+    // flag unread comments while the thread is collapsed.
+    prisma.ticketView.findUnique({ where: { userId_ticketId: { userId: user.id, ticketId: id } } }),
   ]);
   const sla = computeSla(ticket, settings);
+  const lastViewedAt = ticketView?.viewedAt ?? new Date(0);
+  const hasUnreadComments = visibleComments.some(
+    (c) => c.authorId !== user.id && c.createdAt > lastViewedAt
+  );
 
   const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
   const canClose = ticket.status !== "CLOSED" && (isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN"));
@@ -144,40 +152,35 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <SimilarTickets mainId={ticket.id} tickets={similarTickets} />
           )}
 
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900">
-              Commenti {visibleComments.length > 0 && <span className="text-gray-400">({visibleComments.length})</span>}
-            </h2>
-            {visibleComments.length === 0 && <p className="text-sm text-gray-500">Nessun commento.</p>}
-            <CommentsPanel
-              commentCount={visibleComments.length}
-              ticketId={ticket.id}
-              canComment={!(ticket.status === "CLOSED" && !isStaff)}
-              canWriteInternal={isStaff}
-              cannedResponses={cannedResponses}
-              mentionableUsers={itUsers}
-            >
-              {visibleComments.map((comment, i) => {
-                const previous = visibleComments[i - 1];
-                const groupedWithPrevious =
-                  !!previous &&
-                  previous.authorId === comment.authorId &&
-                  previous.internal === comment.internal &&
-                  !previous.deletedAt &&
-                  !comment.deletedAt;
-                return (
-                  <CommentItem
-                    key={comment.id}
-                    comment={comment}
-                    currentUserId={user.id}
-                    isAdmin={user.role === "ADMIN"}
-                    mentionableNames={mentionableNames}
-                    groupedWithPrevious={groupedWithPrevious}
-                  />
-                );
-              })}
-            </CommentsPanel>
-          </div>
+          <CommentsPanel
+            commentCount={visibleComments.length}
+            hasUnread={hasUnreadComments}
+            ticketId={ticket.id}
+            canComment={!(ticket.status === "CLOSED" && !isStaff)}
+            canWriteInternal={isStaff}
+            cannedResponses={cannedResponses}
+            mentionableUsers={itUsers}
+          >
+            {visibleComments.map((comment, i) => {
+              const previous = visibleComments[i - 1];
+              const groupedWithPrevious =
+                !!previous &&
+                previous.authorId === comment.authorId &&
+                previous.internal === comment.internal &&
+                !previous.deletedAt &&
+                !comment.deletedAt;
+              return (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user.id}
+                  isAdmin={user.role === "ADMIN"}
+                  mentionableNames={mentionableNames}
+                  groupedWithPrevious={groupedWithPrevious}
+                />
+              );
+            })}
+          </CommentsPanel>
         </div>
 
         {/* Sidebar — metadata & actions. Sticky + independently scrollable on
