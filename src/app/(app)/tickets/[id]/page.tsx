@@ -183,10 +183,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </CommentsPanel>
         </div>
 
-        {/* Sidebar — metadata & actions. Sticky + independently scrollable on
-            desktop so it stays in view while the main column (comments,
-            history) scrolls past it. */}
-        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-16 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1">
+        {/* Sidebar — metadata & actions. Sticky on desktop so it stays in
+            view while the main column scrolls past it. No forced max-height/
+            internal scroll here on purpose — a tall Cronologia (or anything
+            else) just makes the sidebar taller and the page scrolls further,
+            rather than clipping content behind a hard-to-notice scrollbar. */}
+        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-16">
           <div className="card space-y-4 p-5">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</p>

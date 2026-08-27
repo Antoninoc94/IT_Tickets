@@ -95,7 +95,7 @@ export function TicketHistory({ events }: { events: EventItem[] }) {
       </button>
 
       {expanded && (
-        <ol className="mt-3 max-h-72 space-y-3 overflow-y-auto pr-1">
+        <ol className="mt-3 space-y-3">
           {events.map((e, i) => (
             <li key={e.id} className="flex gap-3">
               <div className="flex flex-col items-center">
