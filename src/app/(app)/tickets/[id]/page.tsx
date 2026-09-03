@@ -116,20 +116,23 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       <ViewTracker ticketId={id} />
       <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* Main column — conversation */}
-        <div className="space-y-6 lg:order-1">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        {/* Left column — ticket info & menus. Sticky on desktop so it stays
+            in view while the conversation on the right scrolls past it. No
+            forced max-height/internal scroll here on purpose — a tall
+            Cronologia (or anything else) just makes this column taller and
+            the page scrolls further, rather than clipping content behind a
+            hard-to-notice scrollbar. */}
+        <div className="space-y-4 lg:sticky lg:top-16 lg:self-start">
           <div className="card p-6">
-            <div className="mb-3 flex items-start justify-between gap-4">
-              <h1 className="text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>{priorityLabels[ticket.priority]}</span>
-                <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
-                {sla.status === "overdue" && <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>}
-                {sla.status === "warning" && <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>}
-              </div>
+            <h1 className="mb-3 text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>{priorityLabels[ticket.priority]}</span>
+              <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
+              {sla.status === "overdue" && <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>}
+              {sla.status === "warning" && <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>}
             </div>
-            <p className="max-w-prose whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">{ticket.description}</p>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">{ticket.description}</p>
             {ticket.attachments.length > 0 && (
               <div className="mt-4">
                 <AttachmentList attachments={ticket.attachments} />
@@ -138,7 +141,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
 
           {ticket.mergedInto && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900/40">
+            <div className="card p-4 text-sm">
               <p className="text-gray-600 dark:text-gray-400">
                 Questo ticket è stato unito nel ticket principale:{" "}
                 <a href={`/tickets/${ticket.mergedInto.id}`} className="font-medium text-[var(--brand)] hover:underline">
@@ -152,43 +155,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <SimilarTickets mainId={ticket.id} tickets={similarTickets} />
           )}
 
-          <CommentsPanel
-            commentCount={visibleComments.length}
-            hasUnread={hasUnreadComments}
-            ticketId={ticket.id}
-            canComment={!(ticket.status === "CLOSED" && !isStaff)}
-            canWriteInternal={isStaff}
-            cannedResponses={cannedResponses}
-            mentionableUsers={itUsers}
-          >
-            {visibleComments.map((comment, i) => {
-              const previous = visibleComments[i - 1];
-              const groupedWithPrevious =
-                !!previous &&
-                previous.authorId === comment.authorId &&
-                previous.internal === comment.internal &&
-                !previous.deletedAt &&
-                !comment.deletedAt;
-              return (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  currentUserId={user.id}
-                  isAdmin={user.role === "ADMIN"}
-                  mentionableNames={mentionableNames}
-                  groupedWithPrevious={groupedWithPrevious}
-                />
-              );
-            })}
-          </CommentsPanel>
-        </div>
-
-        {/* Sidebar — metadata & actions. Sticky on desktop so it stays in
-            view while the main column scrolls past it. No forced max-height/
-            internal scroll here on purpose — a tall Cronologia (or anything
-            else) just makes the sidebar taller and the page scrolls further,
-            rather than clipping content behind a hard-to-notice scrollbar. */}
-        <aside className="space-y-4 lg:order-2 lg:sticky lg:top-16">
           <div className="card space-y-4 p-5">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</p>
@@ -262,7 +228,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
           {(ticket.parent || ticket.children.length > 0) && (
             <div className="card border-l-4 border-l-blue-400 p-4 text-sm dark:border-l-blue-500">
-              <p className="mb-2 font-medium text-blue-900 dark:text-blue-300">Cronologia ticket</p>
+              <p className="mb-2 font-medium text-blue-900 dark:text-blue-300">Ticket correlati</p>
               {ticket.parent && (
                 <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-blue-400 dark:text-blue-500">Padre</span>
@@ -276,7 +242,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               )}
               {ticket.children.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-xs text-blue-400 dark:text-blue-500">Ticket correlati</span>
+                  <span className="text-xs text-blue-400 dark:text-blue-500">Ticket figli</span>
                   {ticket.children.map((child) => (
                     <div key={child.id} className="flex flex-wrap items-center gap-2">
                       <a href={`/tickets/${child.id}`} className="font-medium text-blue-800 hover:underline dark:text-blue-300">
@@ -304,13 +270,46 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
             </div>
           )}
+        </div>
+
+        {/* Right column — Chat & Cronologia. */}
+        <div className="space-y-4">
+          <CommentsPanel
+            commentCount={visibleComments.length}
+            hasUnread={hasUnreadComments}
+            ticketId={ticket.id}
+            canComment={!(ticket.status === "CLOSED" && !isStaff)}
+            canWriteInternal={isStaff}
+            cannedResponses={cannedResponses}
+            mentionableUsers={itUsers}
+          >
+            {visibleComments.map((comment, i) => {
+              const previous = visibleComments[i - 1];
+              const groupedWithPrevious =
+                !!previous &&
+                previous.authorId === comment.authorId &&
+                previous.internal === comment.internal &&
+                !previous.deletedAt &&
+                !comment.deletedAt;
+              return (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user.id}
+                  isAdmin={user.role === "ADMIN"}
+                  mentionableNames={mentionableNames}
+                  groupedWithPrevious={groupedWithPrevious}
+                />
+              );
+            })}
+          </CommentsPanel>
 
           {ticket.events.length > 0 && (
             <div className="card p-4">
               <TicketHistory events={ticket.events} />
             </div>
           )}
-        </aside>
+        </div>
       </div>
     </div>
     </div>
