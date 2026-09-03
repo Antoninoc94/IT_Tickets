@@ -140,6 +140,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             )}
           </div>
 
+          {ticket.events.length > 0 && <TicketHistory events={ticket.events} />}
+
           {ticket.mergedInto && (
             <div className="card p-4 text-sm">
               <p className="text-gray-600 dark:text-gray-400">
@@ -272,7 +274,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
         </div>
 
-        {/* Right column — Chat & Cronologia. */}
+        {/* Right column — Chat. */}
         <div className="space-y-4">
           <CommentsPanel
             commentCount={visibleComments.length}
@@ -303,12 +305,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               );
             })}
           </CommentsPanel>
-
-          {ticket.events.length > 0 && (
-            <div className="card p-4">
-              <TicketHistory events={ticket.events} />
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -112,7 +112,7 @@ Il sistema prevede tre ruoli distinti:
 - **Campi personalizzati per categoria**: il form mostra dinamicamente i campi extra definiti dalla categoria selezionata (testo breve, testo lungo, numero, selezione a tendina); i valori vengono salvati con il ticket e inclusi nell'export CSV
 - **Modelli (template)**: pre-compilazione del form da un template configurato
 - Staff può aprire ticket **per conto di** un altro utente: selettore con ricerca per nome (combobox filtrabile) o inserimento nome libero
-- **Cronologia eventi** (creazione, cambi stato, assegnazioni, chiusura, riapertura) in un riquadro collassabile nella colonna destra, sotto la chat — le azioni di sistema mostrano "Sistema" come autore
+- **Cronologia eventi** (creazione, cambi stato, assegnazioni, chiusura, riapertura) in un riquadro collassabile nella colonna sinistra, subito sotto titolo/descrizione — le azioni di sistema mostrano "Sistema" come autore
 - **Commenti pubblici e note interne** per lo staff, mostrati come bolle stile chat: i commenti dello staff (IT/Admin) sono allineati a destra e quelli del richiedente a sinistra — lo stesso per chiunque apra il ticket, indipendentemente da chi è loggato; colore per ruolo (bianco = richiedente, azzurro = IT/Admin, ambra = nota interna) e messaggi consecutivi dello stesso autore raggruppati senza ripetere avatar/nome
 - **Aggiornamento in tempo reale**: la pagina del ticket controlla ogni 15 secondi se ci sono nuovi commenti/eventi da un'altra sessione e si aggiorna da sola (nessun refresh manuale)
 - La sezione Commenti è **collassabile** (come la Cronologia): se è chiusa e arriva un commento da qualcun altro dopo l'ultima visita, compare un pallino di notifica accanto al conteggio, finché non la riapri
