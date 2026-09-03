@@ -192,6 +192,14 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</p>
                   <p className="mt-0.5 text-sm text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</p>
+                  {ticket.assignee?.phone && (
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--muted)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
+                        <path fillRule="evenodd" d="M3.5 1.5A1.5 1.5 0 0 0 2 3c0 6.075 4.925 11 11 11a1.5 1.5 0 0 0 1.5-1.5v-2.122a1.5 1.5 0 0 0-1.094-1.449l-2.121-.53a1.5 1.5 0 0 0-1.595.541l-.4.5c-.16.2-.427.271-.655.171A8.047 8.047 0 0 1 5.59 6.265c-.1-.228-.03-.495.17-.655l.5-.4A1.5 1.5 0 0 0 6.8 3.615l-.53-2.121A1.5 1.5 0 0 0 4.822 1.5H3.5Z" clipRule="evenodd"/>
+                      </svg>
+                      {ticket.assignee.phone}
+                    </p>
+                  )}
                 </div>
               </>
             )}
