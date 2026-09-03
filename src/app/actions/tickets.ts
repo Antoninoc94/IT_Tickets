@@ -1,0 +1,762 @@
+"use server";
+
+import * as z from "zod";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/dal";
+import { sendMail, ticketUrl } from "@/lib/mail";
+import { buildEmailHtml } from "@/lib/email-html";
+import { getSettings, renderTemplate } from "@/lib/settings";
+import { statusLabels } from "@/lib/ticket-labels";
+import { deleteFile, saveUploadedFiles } from "@/lib/attachments";
+import type { TicketPriority, TicketStatus } from "@/generated/prisma/enums";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function createEvent(
+  ticketId: string,
+  actorId: string | null,
+  type: import("@/generated/prisma/enums").TicketEventType,
+  meta?: Record<string, string>
+) {
+  await prisma.ticketEvent.create({
+    data: { ticketId, actorId, type, meta: meta ?? {} },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Create ticket
+// ---------------------------------------------------------------------------
+
+const NewTicketSchema = z.object({
+  title: z.string().trim().min(3, { error: "Il titolo deve avere almeno 3 caratteri." }),
+  description: z.string().trim().min(10, { error: "Descrivi il problema con almeno 10 caratteri." }),
+  categoryId: z.string().min(1, { error: "Seleziona una categoria." }),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+});
+
+export type NewTicketState = { error?: string } | undefined;
+
+export async function createTicket(_state: NewTicketState, formData: FormData): Promise<NewTicketState> {
+  const user = await getCurrentUser();
+
+  const validated = NewTicketSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    categoryId: formData.get("categoryId"),
+    priority: formData.get("priority"),
+  });
+
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  // Collect custom field values (inputs named cf_<fieldId>)
+  const cfEntries: { fieldId: string; value: string }[] = [];
+  for (const [key, val] of formData.entries()) {
+    if (key.startsWith("cf_") && typeof val === "string" && val.trim()) {
+      cfEntries.push({ fieldId: key.slice(3), value: val.trim() });
+    }
+  }
+
+  // Validate required custom fields for the selected category
+  const categoryFields = await prisma.customField.findMany({
+    where: { categoryId: validated.data.categoryId },
+    orderBy: { position: "asc" },
+  });
+  for (const field of categoryFields) {
+    if (field.required && !cfEntries.find((e) => e.fieldId === field.id)) {
+      return { error: `Il campo "${field.name}" è obbligatorio.` };
+    }
+  }
+
+  const { error: uploadError, saved } = await saveUploadedFiles(formData.getAll("files") as File[]);
+  if (uploadError) {
+    return { error: uploadError };
+  }
+
+  const tagIds = user.role !== "USER"
+    ? (formData.getAll("tagIds") as string[]).filter(Boolean)
+    : [];
+
+  const isFreeText = user.role !== "USER" && formData.get("requesterMode") === "freetext";
+  const requesterFreeText = isFreeText ? String(formData.get("requesterFreeText") ?? "").trim() : null;
+
+  let requesterId: string;
+  let requesterLabel: string | null = null;
+
+  if (isFreeText) {
+    if (!requesterFreeText) return { error: "Inserisci il nome del richiedente." };
+    requesterId = user.id;
+    requesterLabel = requesterFreeText;
+  } else {
+    requesterId =
+      user.role !== "USER" && formData.get("requesterId")
+        ? String(formData.get("requesterId"))
+        : user.id;
+
+    if (requesterId !== user.id) {
+      const requester = await prisma.user.findUnique({ where: { id: requesterId, active: true } });
+      if (!requester) return { error: "Utente richiedente non trovato." };
+    }
+  }
+
+  const parentTicketId = formData.get("parentTicketId");
+  const parentId = typeof parentTicketId === "string" && parentTicketId.trim() ? parentTicketId.trim() : null;
+
+  const ticket = await prisma.ticket.create({
+    data: {
+      ...validated.data,
+      requesterId,
+      requesterLabel,
+      ...(parentId ? { parentTicketId: parentId } : {}),
+      attachments: {
+        create: saved.map((f) => ({ ...f, uploadedById: user.id })),
+      },
+      ...(tagIds.length > 0 ? { tags: { connect: tagIds.map((id) => ({ id })) } } : {}),
+      ...(cfEntries.length > 0 ? { fieldValues: { create: cfEntries } } : {}),
+    },
+  });
+
+  await createEvent(ticket.id, user.id, "CREATED");
+
+  const itAndAdmins = await prisma.user.findMany({
+    where: { role: "IT", active: true },
+    select: { email: true },
+  });
+
+  const settings = await getSettings();
+  const vars = {
+    ticketTitle: ticket.title,
+    ticketDescription: ticket.description,
+    requesterName: user.name,
+    ticketUrl: ticketUrl(ticket.id),
+  };
+  if (settings.emailEnabled) {
+    const subject = renderTemplate(settings.newTicketEmailSubject, vars);
+    const body = renderTemplate(settings.newTicketEmailBody, vars);
+    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
+    await Promise.all(itAndAdmins.map((recipient) => sendMail(recipient.email, subject, body, html)));
+  }
+
+  redirect(`/tickets/${ticket.id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Add comment
+// ---------------------------------------------------------------------------
+
+const CommentSchema = z.object({
+  body: z.string().trim().min(1, { error: "Il commento non può essere vuoto." }),
+  internal: z.enum(["on"]).optional(),
+});
+
+export type CommentState = { error?: string } | undefined;
+
+export async function addComment(
+  ticketId: string,
+  _state: CommentState,
+  formData: FormData
+): Promise<CommentState> {
+  const user = await getCurrentUser();
+
+  const validated = CommentSchema.safeParse({
+    body: formData.get("body"),
+    internal: formData.get("internal") ?? undefined,
+  });
+
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const { error: uploadError, saved } = await saveUploadedFiles(formData.getAll("files") as File[]);
+  if (uploadError) {
+    return { error: uploadError };
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: { requester: true, assignee: { select: { id: true, email: true } } },
+  });
+  if (!ticket) {
+    return { error: "Ticket non trovato." };
+  }
+
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non autorizzato." };
+  }
+
+  if (ticket.status === "CLOSED" && user.role === "USER") {
+    return { error: "Non è possibile commentare un ticket chiuso." };
+  }
+
+  const isInternal = isStaff && validated.data.internal === "on";
+
+  await prisma.comment.create({
+    data: {
+      ticketId,
+      authorId: user.id,
+      body: validated.data.body,
+      internal: isInternal,
+      attachments: {
+        create: saved.map((f) => ({ ...f, ticketId, uploadedById: user.id })),
+      },
+    },
+  });
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { updatedAt: new Date() },
+  });
+
+  // An IT reply claims an unassigned ticket — internal notes don't count
+  // (e.g. "@collega, can you take this one?" shouldn't self-assign).
+  if (user.role === "IT" && !isInternal && !ticket.assignee) {
+    await assignTicket(ticketId, user.id);
+  }
+
+  if (!isInternal) {
+    const settings = await getSettings();
+    const vars = {
+      ticketTitle: ticket.title,
+      authorName: user.name,
+      commentBody: validated.data.body,
+      ticketUrl: ticketUrl(ticket.id),
+    };
+
+    if (settings.emailEnabled) {
+      const commentSubject = renderTemplate(settings.newCommentEmailSubject, vars);
+      const commentBody    = renderTemplate(settings.newCommentEmailBody, vars);
+      const commentHtml    = buildEmailHtml(commentBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Rispondi al ticket →", linkTitle: vars.ticketTitle });
+
+      // Notify requester when IT/Admin comments
+      if (ticket.requesterId !== user.id) {
+        await sendMail(ticket.requester.email, commentSubject, commentBody, commentHtml);
+      }
+      // Notify assignee when the requester (USER) comments
+      if (user.role === "USER" && ticket.assignee && ticket.assignee.id !== user.id) {
+        await sendMail(ticket.assignee.email, commentSubject, commentBody, commentHtml);
+      }
+      // @mention notifications — check each active user's name directly in the text
+      const allUsers = await prisma.user.findMany({
+        where: { active: true, id: { not: user.id } },
+        select: { email: true, name: true },
+      });
+      const mentionedUsers = allUsers.filter((u) => validated.data.body.includes(`@${u.name}`));
+      if (mentionedUsers.length > 0) {
+        const mentionSubject = renderTemplate(settings.mentionEmailSubject, vars);
+        const mentionBody    = renderTemplate(settings.mentionEmailBody, vars);
+        const mentionHtml    = buildEmailHtml(mentionBody, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
+        await Promise.all(mentionedUsers.map((u) => sendMail(u.email, mentionSubject, mentionBody, mentionHtml)));
+      }
+    }
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Edit / delete a comment
+// ---------------------------------------------------------------------------
+
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+
+const EditCommentSchema = z.object({
+  body: z.string().trim().min(1, { error: "Il commento non può essere vuoto." }),
+});
+
+export type EditCommentState = { error?: string; success?: boolean } | undefined;
+
+export async function editComment(
+  commentId: string,
+  _state: EditCommentState,
+  formData: FormData
+): Promise<EditCommentState> {
+  const user = await getCurrentUser();
+
+  const validated = EditCommentSchema.safeParse({ body: formData.get("body") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+  if (!comment || comment.deletedAt) {
+    return { error: "Commento non trovato." };
+  }
+  if (comment.authorId !== user.id) {
+    return { error: "Non autorizzato." };
+  }
+  if (Date.now() - comment.createdAt.getTime() > EDIT_WINDOW_MS) {
+    return { error: "Non è più possibile modificare questo commento (limite di 5 minuti)." };
+  }
+
+  await prisma.comment.update({
+    where: { id: commentId },
+    data: { body: validated.data.body, editedAt: new Date() },
+  });
+
+  revalidatePath(`/tickets/${comment.ticketId}`);
+  return { success: true };
+}
+
+export type DeleteCommentState = { error?: string } | undefined;
+
+export async function deleteComment(commentId: string): Promise<DeleteCommentState> {
+  const user = await getCurrentUser();
+
+  const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+  if (!comment || comment.deletedAt) {
+    return;
+  }
+
+  const isOwnAndFresh =
+    comment.authorId === user.id && Date.now() - comment.createdAt.getTime() <= EDIT_WINDOW_MS;
+  if (!isOwnAndFresh && user.role !== "ADMIN") {
+    return { error: "Non autorizzato." };
+  }
+
+  await prisma.comment.update({
+    where: { id: commentId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  });
+
+  revalidatePath(`/tickets/${comment.ticketId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Update status (staff only)
+// ---------------------------------------------------------------------------
+
+export async function updateTicketStatus(ticketId: string, status: TicketStatus) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") {
+    throw new Error("Non autorizzato.");
+  }
+
+  const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { status: true } });
+  if (!current) return;
+
+  const ticket = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      status,
+      resolvedAt: status === "RESOLVED" ? new Date() : undefined,
+      closedAt: status === "CLOSED" ? new Date() : undefined,
+    },
+    include: { requester: true },
+  });
+
+  await createEvent(ticketId, user.id, "STATUS_CHANGED", { from: current.status, to: status });
+
+  const settings = await getSettings();
+  if (settings.emailEnabled) {
+    const vars = {
+      ticketTitle: ticket.title,
+      status: statusLabels[status],
+      ticketUrl: ticketUrl(ticket.id),
+    };
+    const body = renderTemplate(settings.statusChangedEmailBody, vars);
+    await sendMail(
+      ticket.requester.email,
+      renderTemplate(settings.statusChangedEmailSubject, vars),
+      body,
+      buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
+    );
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Close ticket
+// ---------------------------------------------------------------------------
+
+export type CloseTicketState = { error?: string } | undefined;
+
+const CloseSchema = z.object({
+  reason: z.string().trim().min(5, { error: "Descrivi il motivo della chiusura (min. 5 caratteri)." }),
+});
+
+export async function closeTicket(ticketId: string, _state: CloseTicketState, formData: FormData): Promise<CloseTicketState> {
+  const user = await getCurrentUser();
+
+  const validated = CloseSchema.safeParse({ reason: formData.get("reason") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { requester: true } });
+  if (!ticket) {
+    return { error: "Ticket non trovato." };
+  }
+
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non puoi chiudere questo ticket." };
+  }
+  if (!isStaff && ticket.status !== "OPEN") {
+    return { error: "Puoi chiudere il ticket solo quando è in stato Aperto." };
+  }
+  if (ticket.status === "CLOSED") {
+    return;
+  }
+
+  const prevStatus = ticket.status;
+
+  const updated = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { status: "CLOSED", closedAt: new Date() },
+    include: { requester: true },
+  });
+
+  await prisma.comment.create({
+    data: {
+      ticketId,
+      authorId: user.id,
+      body: `Ticket chiuso. Motivo: ${validated.data.reason}`,
+      internal: false,
+    },
+  });
+
+  await createEvent(ticketId, user.id, "CLOSED", { from: prevStatus });
+
+  if (isStaff) {
+    const settings = await getSettings();
+    if (settings.emailEnabled) {
+      const vars = { ticketTitle: updated.title, status: statusLabels.CLOSED, ticketUrl: ticketUrl(updated.id) };
+      const body = renderTemplate(settings.statusChangedEmailBody, vars);
+      await sendMail(
+        updated.requester.email,
+        renderTemplate(settings.statusChangedEmailSubject, vars),
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
+      );
+    }
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Reopen ticket
+// ---------------------------------------------------------------------------
+
+export type ReopenTicketState = { error?: string } | undefined;
+
+const ReopenSchema = z.object({
+  reason: z.string().trim().min(5, { error: "Descrivi brevemente il motivo della riapertura (min. 5 caratteri)." }),
+});
+
+export async function reopenTicket(
+  ticketId: string,
+  _state: ReopenTicketState,
+  formData: FormData
+): Promise<ReopenTicketState> {
+  const user = await getCurrentUser();
+
+  const validated = ReopenSchema.safeParse({ reason: formData.get("reason") });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message ?? "Dati non validi." };
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: { requester: true },
+  });
+  if (!ticket) return { error: "Ticket non trovato." };
+
+  const isStaff = user.role !== "USER";
+  if (!isStaff && ticket.requesterId !== user.id) {
+    return { error: "Non puoi riaprire questo ticket." };
+  }
+  if (ticket.status !== "CLOSED") {
+    return { error: "Il ticket non è chiuso." };
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { status: "OPEN", closedAt: null },
+  });
+
+  await prisma.comment.create({
+    data: {
+      ticketId,
+      authorId: user.id,
+      body: `Ticket riaperto. Motivo: ${validated.data.reason}`,
+      internal: false,
+    },
+  });
+
+  await createEvent(ticketId, user.id, "REOPENED");
+
+  const settings = await getSettings();
+  if (settings.emailEnabled) {
+    const vars = {
+      ticketTitle: ticket.title,
+      status: statusLabels.OPEN,
+      ticketUrl: ticketUrl(ticket.id),
+    };
+    const body = renderTemplate(settings.statusChangedEmailBody, vars);
+    const html = buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle });
+    const subject = renderTemplate(settings.statusChangedEmailSubject, vars);
+
+    if (isStaff) {
+      // Staff riapre → notifica il richiedente
+      await sendMail(ticket.requester.email, subject, body, html);
+    } else {
+      // Utente riapre → notifica IT/Admin
+      const itAndAdmins = await prisma.user.findMany({
+        where: { role: "IT", active: true },
+        select: { email: true },
+      });
+      await Promise.all(itAndAdmins.map((r) => sendMail(r.email, subject, body, html)));
+    }
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Delete ticket
+// ---------------------------------------------------------------------------
+
+export type DeleteTicketState = { error?: string } | undefined;
+
+export async function deleteTicket(ticketId: string): Promise<DeleteTicketState> {
+  const user = await getCurrentUser();
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    return { error: "Ticket non trovato." };
+  }
+
+  const isStaff = user.role !== "USER";
+  const isOwnOpenTicket = ticket.requesterId === user.id && ticket.status === "OPEN";
+  if (!isStaff && !isOwnOpenTicket) {
+    return { error: "Non puoi eliminare questo ticket." };
+  }
+
+  const attachments = await prisma.attachment.findMany({
+    where: { ticketId },
+    select: { storageKey: true },
+  });
+  await Promise.all(attachments.map((a) => deleteFile(a.storageKey)));
+
+  await prisma.ticket.delete({ where: { id: ticketId } });
+
+  redirect("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Mark ticket as viewed (updates TicketView for unread badge)
+// ---------------------------------------------------------------------------
+
+export async function markTicketViewed(ticketId: string) {
+  const user = await getCurrentUser();
+  await prisma.ticketView.upsert({
+    where: { userId_ticketId: { userId: user.id, ticketId } },
+    create: { userId: user.id, ticketId },
+    update: { viewedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Update ticket priority / category (staff only)
+// ---------------------------------------------------------------------------
+
+export async function updateTicketMeta(
+  ticketId: string,
+  field: "priority" | "category",
+  value: string
+) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+
+  if (field === "priority") {
+    const valid: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    if (!valid.includes(value as TicketPriority)) throw new Error("Valore non valido.");
+    const current = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { priority: true } });
+    await prisma.ticket.update({ where: { id: ticketId }, data: { priority: value as TicketPriority } });
+    if (current) await createEvent(ticketId, user.id, "PRIORITY_CHANGED", { from: current.priority, to: value });
+  } else {
+    const [current, newCat] = await Promise.all([
+      prisma.ticket.findUnique({ where: { id: ticketId }, select: { category: { select: { name: true } } } }),
+      prisma.category.findUnique({ where: { id: value }, select: { name: true } }),
+    ]);
+    if (!newCat) throw new Error("Categoria non trovata.");
+    await prisma.ticket.update({ where: { id: ticketId }, data: { categoryId: value } });
+    if (current?.category) await createEvent(ticketId, user.id, "CATEGORY_CHANGED", { from: current.category.name, to: newCat.name });
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Merge duplicate ticket into main ticket (staff only)
+// ---------------------------------------------------------------------------
+
+export type MergeTicketState = { error?: string } | undefined;
+
+export async function mergeTickets(mainId: string, duplicateId: string): Promise<MergeTicketState> {
+  const user = await getCurrentUser();
+  if (user.role === "USER") return { error: "Non autorizzato." };
+  if (mainId === duplicateId) return { error: "Non puoi unire un ticket con se stesso." };
+
+  const [main, duplicate] = await Promise.all([
+    prisma.ticket.findUnique({ where: { id: mainId }, select: { id: true, title: true } }),
+    prisma.ticket.findUnique({ where: { id: duplicateId }, select: { id: true, title: true, status: true, mergedIntoId: true } }),
+  ]);
+
+  if (!main || !duplicate) return { error: "Ticket non trovato." };
+  if (duplicate.mergedIntoId) return { error: "Questo ticket è già stato unito." };
+  if (duplicate.status === "CLOSED") return { error: "Il ticket duplicato è già chiuso." };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.ticket.update({
+      where: { id: duplicateId },
+      data: { status: "CLOSED", closedAt: new Date(), mergedIntoId: mainId },
+    });
+
+    await tx.comment.create({
+      data: {
+        ticketId: mainId,
+        authorId: user.id,
+        body: `Il ticket "${duplicate.title}" è stato unito in questo ticket.`,
+        internal: true,
+      },
+    });
+
+    await tx.ticketEvent.create({
+      data: { ticketId: duplicateId, actorId: user.id, type: "MERGED", meta: { mainId, mainTitle: main.title } },
+    });
+
+    await tx.ticketEvent.create({
+      data: { ticketId: mainId, actorId: user.id, type: "MERGED", meta: { duplicateId, duplicateTitle: duplicate.title, direction: "received" } },
+    });
+  });
+
+  revalidatePath(`/tickets/${mainId}`);
+  revalidatePath(`/tickets/${duplicateId}`);
+  revalidatePath("/dashboard");
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Bulk actions (staff only)
+// ---------------------------------------------------------------------------
+
+export async function bulkUpdateStatus(ids: string[], status: TicketStatus) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+  if (ids.length === 0) return;
+  const now = new Date();
+  await prisma.ticket.updateMany({
+    where: { id: { in: ids } },
+    data: {
+      status,
+      ...(status === "RESOLVED" ? { resolvedAt: now } : {}),
+      ...(status === "CLOSED" ? { closedAt: now } : {}),
+      updatedAt: now,
+    },
+  });
+  revalidatePath("/dashboard");
+}
+
+export async function bulkAssign(ids: string[], assigneeId: string | null) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") throw new Error("Non autorizzato.");
+  if (ids.length === 0) return;
+  if (assigneeId) {
+    const assignee = await prisma.user.findUnique({ where: { id: assigneeId, role: "IT", active: true } });
+    if (!assignee) throw new Error("Assegnatario non valido.");
+  }
+  await prisma.ticket.updateMany({
+    where: { id: { in: ids } },
+    data: { assigneeId: assigneeId || null, updatedAt: new Date() },
+  });
+  revalidatePath("/dashboard");
+}
+
+// ---------------------------------------------------------------------------
+// Assign ticket
+// ---------------------------------------------------------------------------
+
+export async function assignTicket(ticketId: string, assigneeId: string) {
+  const user = await getCurrentUser();
+  if (user.role === "USER") {
+    throw new Error("Non autorizzato.");
+  }
+
+  const current = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { status: true, assigneeId: true },
+  });
+  if (!current) return;
+
+  const assignee = assigneeId
+    ? await prisma.user.findUnique({ where: { id: assigneeId, role: "IT", active: true } })
+    : null;
+  if (assigneeId && !assignee) {
+    throw new Error("Assegnatario non valido.");
+  }
+
+  const autoStart = Boolean(assignee) && current.status === "OPEN";
+
+  const ticket = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      assigneeId: assigneeId || null,
+      ...(autoStart ? { status: "IN_PROGRESS" } : {}),
+    },
+    include: { requester: true },
+  });
+
+  if (assignee) {
+    await createEvent(ticketId, user.id, "ASSIGNED", { assigneeName: assignee.name });
+  } else {
+    await createEvent(ticketId, user.id, "UNASSIGNED");
+  }
+
+  if (autoStart) {
+    await createEvent(ticketId, user.id, "STATUS_CHANGED", { from: "OPEN", to: "IN_PROGRESS" });
+  }
+
+  const settings = await getSettings();
+
+  if (settings.emailEnabled) {
+    // Skip the "you've been assigned" email when someone assigns a ticket to
+    // themselves (manually, or by auto-claiming it via a comment) — they
+    // already know.
+    if (assignee && assignee.id !== user.id) {
+      const vars = { ticketTitle: ticket.title, ticketUrl: ticketUrl(ticket.id) };
+      const body = renderTemplate(settings.assignedEmailBody, vars);
+      await sendMail(
+        assignee.email,
+        renderTemplate(settings.assignedEmailSubject, vars),
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
+      );
+    }
+    if (autoStart) {
+      const vars = { ticketTitle: ticket.title, status: statusLabels.IN_PROGRESS, ticketUrl: ticketUrl(ticket.id) };
+      const body = renderTemplate(settings.statusChangedEmailBody, vars);
+      await sendMail(
+        ticket.requester.email,
+        renderTemplate(settings.statusChangedEmailSubject, vars),
+        body,
+        buildEmailHtml(body, settings, { ctaUrl: vars.ticketUrl, ctaLabel: "Apri ticket →", linkTitle: vars.ticketTitle })
+      );
+    }
+  }
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/dashboard");
+}

@@ -1,0 +1,92 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/dal";
+import { getSettings } from "@/lib/settings";
+import { SettingsForm } from "./settings-form";
+import { StorageSection } from "./storage-section";
+import { GraphicsSection } from "./graphics-section";
+import { SlaSection } from "./sla-section";
+import { EmailFlagsSection } from "./email-flags-section";
+import { KbSection } from "./kb-section";
+import { WipeForm } from "./wipe-form";
+
+export default async function AdminSettingsPage() {
+  const current = await getCurrentUser();
+  if (current.role !== "ADMIN") redirect("/dashboard");
+
+  const settings = await getSettings();
+
+  const graphEnvStatus = {
+    tenantId:     !!process.env.GRAPH_TENANT_ID,
+    clientId:     !!process.env.GRAPH_CLIENT_ID,
+    clientSecret: !!process.env.GRAPH_CLIENT_SECRET,
+    senderEmail:  !!process.env.GRAPH_SENDER_EMAIL,
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-10">
+      <div>
+        <h1 className="page-title">Impostazioni</h1>
+        <p className="page-subtitle">Grafica, SLA, notifiche email e archiviazione.</p>
+      </div>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Grafica</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Nome, colore del brand, logo e icona del browser.</p>
+        </div>
+        <GraphicsSection settings={settings} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">SLA</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Ore dalla creazione del ticket entro cui deve essere risolto, per priorità.</p>
+        </div>
+        <SlaSection settings={settings} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Email — Impostazioni</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Abilita/disabilita le email, promemoria automatici e digest giornaliero.</p>
+        </div>
+        <EmailFlagsSection settings={settings} graphEnvStatus={graphEnvStatus} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Email — Template</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Template per le email automatiche inviate agli utenti e al team IT.</p>
+        </div>
+        <SettingsForm settings={settings} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Archiviazione</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Spazio usato dagli allegati e pulizia automatica.</p>
+        </div>
+        <StorageSection />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-gray-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Knowledge Base</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Abilita o disabilita la sezione Knowledge Base per tutto il portale.</p>
+        </div>
+        <KbSection settings={settings} />
+      </section>
+
+      <section className="space-y-4">
+        <div className="border-b border-red-200 pb-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-red-500">Zona pericolosa</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Operazioni irreversibili. Usare solo in ambienti di test o prima di un nuovo avvio.</p>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/30">
+          <p className="mb-4 text-sm font-medium text-red-700 dark:text-red-400">Azzera tutti i ticket</p>
+          <WipeForm />
+        </div>
+      </section>
+    </div>
+  );
+}

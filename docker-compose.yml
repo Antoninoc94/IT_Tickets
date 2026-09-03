@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-it_tickets}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-it_tickets}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-it_tickets}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-it_tickets}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-it_tickets}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-it_tickets}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-it_tickets}
+      AUTH_SECRET: ${AUTH_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM}
+      APP_URL: ${APP_URL}
+      ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-25}
+      UPLOADS_DIR: /app/uploads
+      CRON_SECRET: ${CRON_SECRET:-}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  cron:
+    image: alpine:3
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+    # Runs daily at 07:00: reminder check + digest
+    command: >
+      sh -c 'echo "0 7 * * * wget -q -O- --header=\"x-cron-secret: $$CRON_SECRET\" http://app:3000/api/cron/reminders && wget -q -O- --header=\"x-cron-secret: $$CRON_SECRET\" http://app:3000/api/cron/digest" | crontab - && crond -f -l 8'
+    depends_on:
+      - app
+
+volumes:
+  postgres_data:
+  uploads_data:

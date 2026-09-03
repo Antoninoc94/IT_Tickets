@@ -1,0 +1,376 @@
+// Prisma schema for the internal IT ticketing app
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  IT
+  USER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketEventType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  CLOSED
+  REOPENED
+  PRIORITY_CHANGED
+  CATEGORY_CHANGED
+  MERGED
+}
+
+model Category {
+  id        String           @id @default(cuid())
+  name      String
+  color     String           @default("#6366f1")
+  enabled   Boolean          @default(true)
+  position  Int              @default(0)
+  tickets      Ticket[]
+  templates    TicketTemplate[]
+  customFields CustomField[]
+  kbArticles   KbArticle[]
+}
+
+model CustomField {
+  id         String  @id @default(cuid())
+  name       String
+  // text | textarea | number | select
+  type       String  @default("text")
+  // JSON array of strings — only for type=select
+  options    String?
+  required   Boolean @default(false)
+  position   Int     @default(0)
+  // Placeholder / help text shown to the user
+  hint       String?
+
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  values TicketFieldValue[]
+
+  @@index([categoryId])
+}
+
+model TicketFieldValue {
+  id    String @id @default(cuid())
+  value String
+
+  ticket   Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  field    CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId  String
+
+  @@unique([ticketId, fieldId])
+  @@index([ticketId])
+}
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  color   String   @default("#6366f1")
+  tickets Ticket[]
+}
+
+model TicketTemplate {
+  id          String          @id @default(cuid())
+  name        String
+  title       String          @default("")
+  description String          @default("")
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId String?
+  priority    TicketPriority?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model CannedResponse {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TicketView {
+  userId    String
+  ticketId  String
+  viewedAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([userId, ticketId])
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String
+  phone        String?
+  passwordHash String
+  role         Role    @default(USER)
+  active       Boolean @default(true)
+
+  // TOTP 2FA, disabled until the user completes setup
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
+
+  // Null until the user confirms their company email address (self-registration)
+  // or an admin creates the account directly.
+  emailVerifiedAt DateTime?
+  // True for admin-created accounts until the user sets their own password.
+  mustChangePassword Boolean @default(false)
+
+  verificationCodeHash      String?
+  verificationCodeExpiresAt DateTime?
+  // Wrong guesses against the current verification code; reset whenever a new code is issued.
+  verificationAttempts Int @default(0)
+
+  // Profile-initiated email change: the account keeps working under the
+  // current (already verified) `email` until the new address is confirmed
+  // via its own code — `email` itself is never touched until then.
+  pendingEmail               String?
+  pendingEmailCodeHash       String?
+  pendingEmailCodeExpiresAt  DateTime?
+  pendingEmailAttempts       Int       @default(0)
+
+  // Consecutive failed login attempts; reset on success. Once it hits the
+  // threshold, lockedUntil is set and further logins are rejected until it passes.
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketsCreated  Ticket[]      @relation("TicketRequester")
+  ticketsAssigned Ticket[]      @relation("TicketAssignee")
+  comments        Comment[]
+  deletedComments Comment[]     @relation("CommentDeletedBy")
+  attachments     Attachment[]
+  ticketEvents    TicketEvent[] @relation("TicketEventActor")
+  ticketViews     TicketView[]
+  kbArticles      KbArticle[]
+
+  @@index([role])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  requester      User    @relation("TicketRequester", fields: [requesterId], references: [id])
+  requesterId    String
+  requesterLabel String?
+
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  assigneeId String?
+
+  parentTicketId String?
+  parent         Ticket?  @relation("TicketRelation", fields: [parentTicketId], references: [id], onDelete: SetNull)
+  children       Ticket[] @relation("TicketRelation")
+
+  mergedIntoId  String?
+  mergedInto    Ticket?  @relation("TicketMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedTickets Ticket[] @relation("TicketMerge")
+
+  comments    Comment[]
+  attachments Attachment[]
+  events      TicketEvent[]
+  views       TicketView[]
+  tags        Tag[]
+  fieldValues TicketFieldValue[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([assigneeId])
+}
+
+model Setting {
+  // Singleton row; always read/written with id = "app".
+  id String @id @default("app")
+
+  appName    String  @default("IT Tickets")
+  brandColor String  @default("#4f46e5")
+  // Filename on disk (under the uploads dir) of the company logo, if uploaded.
+  logoStorageKey      String?
+  // Separate logo for email headers (e.g. white/light version on dark background).
+  emailLogoStorageKey String?
+  // Filename on disk of the browser favicon, if uploaded.
+  faviconStorageKey   String?
+
+  // SLA in hours per priority level; null = no SLA configured.
+  slaUrgentHours  Int?
+  slaHighHours    Int?
+  slaMediumHours  Int?
+  slaLowHours     Int?
+
+  // Business-hours SLA: count only hours within the configured work window.
+  slaBusinessHours Boolean @default(false)
+  slaWorkdayStart  Int     @default(9)
+  slaWorkdayEnd    Int     @default(18)
+  // Comma-separated ISO weekday numbers (1=Mon … 7=Sun), e.g. "1,2,3,4,5".
+  slaWorkDays      String  @default("1,2,3,4,5")
+
+  newTicketEmailSubject String @default("Nuovo ticket: {{ticketTitle}}")
+  newTicketEmailBody    String @default("{{requesterName}} ha aperto un nuovo ticket.\n\n{{ticketDescription}}\n\n{{ticketUrl}}")
+
+  assignedEmailSubject String @default("Ticket assegnato: {{ticketTitle}}")
+  assignedEmailBody    String @default("Ti è stato assegnato il ticket \"{{ticketTitle}}\".\n\n{{ticketUrl}}")
+
+  statusChangedEmailSubject String @default("Aggiornamento ticket: {{ticketTitle}}")
+  statusChangedEmailBody    String @default("Lo stato del tuo ticket è cambiato in \"{{status}}\".\n\n{{ticketUrl}}")
+
+  newCommentEmailSubject String @default("Nuovo commento sul ticket: {{ticketTitle}}")
+  newCommentEmailBody    String @default("{{authorName}} ha commentato il tuo ticket.\n\n{{commentBody}}\n\n{{ticketUrl}}")
+
+  mentionEmailSubject String @default("Sei stato menzionato nel ticket: {{ticketTitle}}")
+  mentionEmailBody    String @default("{{authorName}} ti ha menzionato in un commento.\n\n{{commentBody}}\n\n{{ticketUrl}}")
+
+  // Email master switch — disabling it suppresses all outbound mail
+  emailEnabled Boolean @default(true)
+
+  // "smtp" (default) or "graph" (Microsoft Graph API / Office 365)
+  emailProvider String @default("smtp")
+
+  // Auto-reminder: if set, sends a reminder email N days after the last activity on open tickets
+  reminderDays Int?
+
+  // Auto-close: if set, RESOLVED tickets are automatically closed after N days with no updates
+  autoCloseDays Int?
+
+  // Daily digest: if enabled, IT staff receive a morning summary of open tickets
+  digestEnabled Boolean @default(false)
+
+  // Knowledge Base feature flag
+  kbEnabled Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
+model KbArticle {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  body      String
+  published Boolean  @default(false)
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([published])
+  @@index([categoryId])
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  body     String
+  internal Boolean @default(false)
+
+  // Set when the author edits within the 5-minute window; the label
+  // "(modificato)" is shown whenever this is non-null, permanently.
+  editedAt DateTime?
+
+  // Soft delete: body is kept in the database (not destroyed) but the UI
+  // shows a "Commento rimosso da X il Y" placeholder instead. Settable by
+  // the author within the same 5-minute edit window, or by an Admin anytime.
+  deletedAt   DateTime?
+  deletedBy   User?     @relation("CommentDeletedBy", fields: [deletedById], references: [id])
+  deletedById String?
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  attachments Attachment[]
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketEvent {
+  id       String          @id @default(cuid())
+  type     TicketEventType
+  // JSON payload — shape depends on type:
+  // STATUS_CHANGED: { from, to }
+  // ASSIGNED / UNASSIGNED: { assigneeName }
+  // CLOSED / REOPENED / CREATED: {}
+  meta     Json?
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  // Null when the action was performed by the system (e.g. auto-assign).
+  actor   User?   @relation("TicketEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model Attachment {
+  id         String @id @default(cuid())
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  // Name of the file on disk under the uploads directory (random, not user-controlled).
+  storageKey String @unique
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String?
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([commentId])
+}

@@ -1,0 +1,317 @@
+import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/lib/dal";
+import { prisma } from "@/lib/prisma";
+import {
+  priorityBadgeClass,
+  priorityLabels,
+  statusBadgeClass,
+  statusLabels,
+} from "@/lib/ticket-labels";
+import { TicketControls } from "./ticket-controls";
+import { getSettings } from "@/lib/settings";
+import { computeSla, formatRemaining } from "@/lib/sla";
+import { AttachmentList } from "./attachment-list";
+import { DeleteTicketButton } from "./delete-ticket-button";
+import { CloseTicketButton } from "./close-ticket-button";
+import { ReopenTicketButton } from "./reopen-ticket-button";
+import { TicketHistory } from "./ticket-history";
+import { ViewTracker } from "./view-tracker";
+import { LiveRefresh } from "./live-refresh";
+import { CommentItem } from "./comment-item";
+import { CommentsPanel } from "./comments-panel";
+import { TagEditor } from "./tag-editor";
+import { SimilarTickets } from "./similar-tickets";
+
+export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id },
+    include: {
+      requester: true,
+      assignee: true,
+      category: true,
+      tags: true,
+      parent: { select: { id: true, title: true, status: true } },
+      children: { select: { id: true, title: true, status: true }, orderBy: { createdAt: "asc" } },
+      mergedInto: { select: { id: true, title: true } },
+      attachments: { where: { commentId: null }, orderBy: { createdAt: "asc" } },
+      comments: {
+        include: {
+          author: { select: { name: true, role: true } },
+          attachments: true,
+          deletedBy: { select: { name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      events: {
+        include: { actor: { select: { name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      fieldValues: {
+        include: { field: { select: { name: true, position: true } } },
+        orderBy: { field: { position: "asc" } },
+      },
+    },
+  });
+
+  if (!ticket) notFound();
+  if (user.role === "USER" && ticket.requesterId !== user.id) notFound();
+
+  const isStaff = user.role !== "USER";
+  const visibleComments = isStaff ? ticket.comments : ticket.comments.filter((c) => !c.internal);
+
+  const itUsers = isStaff
+    ? await prisma.user.findMany({
+        where: { role: "IT", active: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
+  const mentionableNames = [
+    ...itUsers.map((u) => u.name),
+    ticket.requester.name,
+    ...(ticket.assignee ? [ticket.assignee.name] : []),
+  ].filter((v, i, a) => a.indexOf(v) === i);
+
+  const titleWords = ticket.title.split(/\s+/).filter((w) => w.length >= 2);
+  const [settings, cannedResponses, allTags, categories, similarTickets, ticketView] = await Promise.all([
+    getSettings(),
+    isStaff ? prisma.cannedResponse.findMany({ orderBy: { title: "asc" } }) : Promise.resolve([]),
+    isStaff ? prisma.tag.findMany({ orderBy: { name: "asc" } }) : Promise.resolve([]),
+    isStaff ? prisma.category.findMany({ where: { enabled: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }) : Promise.resolve([]),
+    isStaff && titleWords.length > 0 && ticket.status !== "CLOSED" && !ticket.mergedIntoId
+      ? prisma.ticket.findMany({
+          where: {
+            id: { not: ticket.id },
+            status: { notIn: ["CLOSED"] },
+            mergedIntoId: null,
+            OR: titleWords.map((word) => ({ title: { contains: word, mode: "insensitive" as const } })),
+          },
+          select: { id: true, title: true, status: true },
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    // Read before ViewTracker's client-side markTicketViewed() call lands, so
+    // this reflects "last time you looked" rather than "just now" — used to
+    // flag unread comments while the thread is collapsed.
+    prisma.ticketView.findUnique({ where: { userId_ticketId: { userId: user.id, ticketId: id } } }),
+  ]);
+  const sla = computeSla(ticket, settings);
+  const lastViewedAt = ticketView?.viewedAt ?? new Date(0);
+  const hasUnreadComments = visibleComments.some(
+    (c) => c.authorId !== user.id && c.createdAt > lastViewedAt
+  );
+
+  const canDelete = isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN");
+  const canClose = ticket.status !== "CLOSED" && (isStaff || (ticket.requesterId === user.id && ticket.status === "OPEN"));
+  const canReopen = ticket.status === "CLOSED" && isStaff;
+
+  return (
+    <div className="relative left-1/2 w-screen -translate-x-1/2">
+    <div className="mx-auto max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8">
+      <ViewTracker ticketId={id} />
+      <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        {/* Left column — ticket info & menus. Sticky on desktop so it stays
+            in view while the conversation on the right scrolls past it. No
+            forced max-height/internal scroll here on purpose — a tall
+            Cronologia (or anything else) just makes this column taller and
+            the page scrolls further, rather than clipping content behind a
+            hard-to-notice scrollbar. */}
+        <div className="space-y-4 lg:sticky lg:top-16 lg:self-start">
+          <div className="card p-6">
+            <h1 className="mb-3 text-xl font-semibold tracking-tight text-gray-900">{ticket.title}</h1>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <span className={`badge ${priorityBadgeClass[ticket.priority]}`}>{priorityLabels[ticket.priority]}</span>
+              <span className={`badge ${statusBadgeClass[ticket.status]}`}>{statusLabels[ticket.status]}</span>
+              {sla.status === "overdue" && <span className="badge bg-red-100 text-red-700">⚠ {formatRemaining(sla.remainingMs!)}</span>}
+              {sla.status === "warning" && <span className="badge bg-amber-100 text-amber-700">⏱ {formatRemaining(sla.remainingMs!)}</span>}
+            </div>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700">{ticket.description}</p>
+            {ticket.attachments.length > 0 && (
+              <div className="mt-4">
+                <AttachmentList attachments={ticket.attachments} />
+              </div>
+            )}
+          </div>
+
+          {ticket.mergedInto && (
+            <div className="card p-4 text-sm">
+              <p className="text-gray-600 dark:text-gray-400">
+                Questo ticket è stato unito nel ticket principale:{" "}
+                <a href={`/tickets/${ticket.mergedInto.id}`} className="font-medium text-[var(--brand)] hover:underline">
+                  {ticket.mergedInto.title}
+                </a>
+              </p>
+            </div>
+          )}
+
+          {isStaff && similarTickets.length > 0 && (
+            <SimilarTickets mainId={ticket.id} tickets={similarTickets} />
+          )}
+
+          <div className="card space-y-4 p-5">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Richiedente</p>
+              <p className="mt-0.5 text-sm text-gray-900">{ticket.requesterLabel ?? ticket.requester.name}</p>
+              {isStaff && ticket.requester.phone && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--muted)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
+                    <path fillRule="evenodd" d="M3.5 1.5A1.5 1.5 0 0 0 2 3c0 6.075 4.925 11 11 11a1.5 1.5 0 0 0 1.5-1.5v-2.122a1.5 1.5 0 0 0-1.094-1.449l-2.121-.53a1.5 1.5 0 0 0-1.595.541l-.4.5c-.16.2-.427.271-.655.171A8.047 8.047 0 0 1 5.59 6.265c-.1-.228-.03-.495.17-.655l.5-.4A1.5 1.5 0 0 0 6.8 3.615l-.53-2.121A1.5 1.5 0 0 0 4.822 1.5H3.5Z" clipRule="evenodd"/>
+                  </svg>
+                  {ticket.requester.phone}
+                </p>
+              )}
+            </div>
+
+            {isStaff ? (
+              <div className="border-t border-gray-100 pt-4">
+                <TicketControls
+                  ticketId={ticket.id}
+                  status={ticket.status}
+                  priority={ticket.priority}
+                  categoryId={ticket.categoryId}
+                  categories={categories}
+                  assigneeId={ticket.assigneeId}
+                  itUsers={itUsers}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</p>
+                  <p className="mt-0.5 text-sm text-gray-900">{ticket.category.name}</p>
+                </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</p>
+                  <p className="mt-0.5 text-sm text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</p>
+                </div>
+              </>
+            )}
+
+            {ticket.fieldValues.length > 0 && (
+              <div className="space-y-3 border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Informazioni aggiuntive</p>
+                {ticket.fieldValues.map((fv) => (
+                  <div key={fv.id}>
+                    <p className="text-xs font-medium text-gray-500">{fv.field.name}</p>
+                    <p className="mt-0.5 text-sm text-gray-900 dark:text-gray-100">{fv.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {(ticket.tags.length > 0 || (isStaff && allTags.length > 0)) && (
+            <div className="card space-y-3 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Tag</p>
+              {ticket.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {ticket.tags.map((tag) => (
+                    <span key={tag.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: tag.color + "22", color: tag.color }}>
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isStaff && allTags.length > 0 && (
+                <TagEditor ticketId={ticket.id} allTags={allTags} currentTagIds={ticket.tags.map((t) => t.id)} />
+              )}
+            </div>
+          )}
+
+          {(ticket.parent || ticket.children.length > 0) && (
+            <div className="card border-l-4 border-l-blue-400 p-4 text-sm dark:border-l-blue-500">
+              <p className="mb-2 font-medium text-blue-900 dark:text-blue-300">Ticket correlati</p>
+              {ticket.parent && (
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-blue-400 dark:text-blue-500">Padre</span>
+                  <a href={`/tickets/${ticket.parent.id}`} className="font-medium text-blue-800 hover:underline dark:text-blue-300">
+                    {ticket.parent.title}
+                  </a>
+                  <span className={`badge text-[10px] ${statusBadgeClass[ticket.parent.status]}`}>
+                    {statusLabels[ticket.parent.status]}
+                  </span>
+                </div>
+              )}
+              {ticket.children.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-xs text-blue-400 dark:text-blue-500">Ticket figli</span>
+                  {ticket.children.map((child) => (
+                    <div key={child.id} className="flex flex-wrap items-center gap-2">
+                      <a href={`/tickets/${child.id}`} className="font-medium text-blue-800 hover:underline dark:text-blue-300">
+                        {child.title}
+                      </a>
+                      <span className={`badge text-[10px] ${statusBadgeClass[child.status]}`}>
+                        {statusLabels[child.status]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(canClose || canReopen || canDelete || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
+            <div className="card flex flex-col items-stretch gap-2 p-4">
+              {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
+              {!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id && (
+                <a href={`/tickets/new?parentId=${ticket.id}`} className="btn-secondary text-center text-sm">
+                  Apri ticket correlato
+                </a>
+              )}
+              {canClose && <CloseTicketButton ticketId={ticket.id} />}
+              {canDelete && <DeleteTicketButton ticketId={ticket.id} />}
+            </div>
+          )}
+        </div>
+
+        {/* Right column — Chat & Cronologia. */}
+        <div className="space-y-4">
+          <CommentsPanel
+            commentCount={visibleComments.length}
+            hasUnread={hasUnreadComments}
+            ticketId={ticket.id}
+            canComment={!(ticket.status === "CLOSED" && !isStaff)}
+            canWriteInternal={isStaff}
+            cannedResponses={cannedResponses}
+            mentionableUsers={itUsers}
+          >
+            {visibleComments.map((comment, i) => {
+              const previous = visibleComments[i - 1];
+              const groupedWithPrevious =
+                !!previous &&
+                previous.authorId === comment.authorId &&
+                previous.internal === comment.internal &&
+                !previous.deletedAt &&
+                !comment.deletedAt;
+              return (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user.id}
+                  isAdmin={user.role === "ADMIN"}
+                  mentionableNames={mentionableNames}
+                  groupedWithPrevious={groupedWithPrevious}
+                />
+              );
+            })}
+          </CommentsPanel>
+
+          {ticket.events.length > 0 && (
+            <div className="card p-4">
+              <TicketHistory events={ticket.events} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+    </div>
+  );
+}
