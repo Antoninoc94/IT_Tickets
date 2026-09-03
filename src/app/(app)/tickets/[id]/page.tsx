@@ -116,7 +116,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       <ViewTracker ticketId={id} />
       <LiveRefresh ticketId={id} updatedAtISO={ticket.updatedAt.toISOString()} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         {/* Main column — conversation */}
         <div className="space-y-6 lg:order-1">
           <div className="card p-6">
@@ -202,14 +202,31 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 </p>
               )}
             </div>
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</p>
-              <p className="mt-0.5 text-sm text-gray-900">{ticket.category.name}</p>
-            </div>
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</p>
-              <p className="mt-0.5 text-sm text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</p>
-            </div>
+
+            {isStaff ? (
+              <div className="border-t border-gray-100 pt-4">
+                <TicketControls
+                  ticketId={ticket.id}
+                  status={ticket.status}
+                  priority={ticket.priority}
+                  categoryId={ticket.categoryId}
+                  categories={categories}
+                  assigneeId={ticket.assigneeId}
+                  itUsers={itUsers}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Categoria</p>
+                  <p className="mt-0.5 text-sm text-gray-900">{ticket.category.name}</p>
+                </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Assegnato a</p>
+                  <p className="mt-0.5 text-sm text-gray-900">{ticket.assignee?.name ?? "Non assegnato"}</p>
+                </div>
+              </>
+            )}
 
             {ticket.fieldValues.length > 0 && (
               <div className="space-y-3 border-t border-gray-100 pt-4">
@@ -224,35 +241,27 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             )}
           </div>
 
-          {isStaff && (
-            <TicketControls
-              ticketId={ticket.id}
-              status={ticket.status}
-              priority={ticket.priority}
-              categoryId={ticket.categoryId}
-              categories={categories}
-              assigneeId={ticket.assigneeId}
-              itUsers={itUsers}
-            />
-          )}
-
-          {ticket.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {ticket.tags.map((tag) => (
-                <span key={tag.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: tag.color + "22", color: tag.color }}>
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
-                  {tag.name}
-                </span>
-              ))}
+          {(ticket.tags.length > 0 || (isStaff && allTags.length > 0)) && (
+            <div className="card space-y-3 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Tag</p>
+              {ticket.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {ticket.tags.map((tag) => (
+                    <span key={tag.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: tag.color + "22", color: tag.color }}>
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isStaff && allTags.length > 0 && (
+                <TagEditor ticketId={ticket.id} allTags={allTags} currentTagIds={ticket.tags.map((t) => t.id)} />
+              )}
             </div>
           )}
 
-          {isStaff && allTags.length > 0 && (
-            <TagEditor ticketId={ticket.id} allTags={allTags} currentTagIds={ticket.tags.map((t) => t.id)} />
-          )}
-
           {(ticket.parent || ticket.children.length > 0) && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+            <div className="card border-l-4 border-l-blue-400 p-4 text-sm dark:border-l-blue-500">
               <p className="mb-2 font-medium text-blue-900 dark:text-blue-300">Cronologia ticket</p>
               {ticket.parent && (
                 <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -284,7 +293,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
 
           {(canClose || canReopen || canDelete || (!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id)) && (
-            <div className="flex flex-col items-stretch gap-2 border-t border-gray-100 pt-4">
+            <div className="card flex flex-col items-stretch gap-2 p-4">
               {canReopen && <ReopenTicketButton ticketId={ticket.id} />}
               {!isStaff && ticket.status === "CLOSED" && ticket.requesterId === user.id && (
                 <a href={`/tickets/new?parentId=${ticket.id}`} className="btn-secondary text-center text-sm">
@@ -297,7 +306,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           )}
 
           {ticket.events.length > 0 && (
-            <div className="border-t border-gray-100 pt-4">
+            <div className="card p-4">
               <TicketHistory events={ticket.events} />
             </div>
           )}
